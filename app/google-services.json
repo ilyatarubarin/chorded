@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "457306808215",
+    "project_id": "chorded-d275a",
+    "storage_bucket": "chorded-d275a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:457306808215:android:6f69ccdaec6fc1467a2ed2",
+        "android_client_info": {
+          "package_name": "com.chorded.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBnPlyCeKXpLng-jB1QAfwQEQ0EnUCeFpQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
