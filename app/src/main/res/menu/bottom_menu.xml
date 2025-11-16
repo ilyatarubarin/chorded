@@ -1,14 +1,23 @@
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
+
     <item
         android:id="@+id/nav_chords"
         android:title="Аккорды"
-        android:icon="@drawable/chord_icon" />
+        android:icon="@drawable/chord_icon"/>
+
     <item
         android:id="@+id/nav_recommendations"
         android:title="Рекомендации"
-        android:icon="@drawable/songs_icon" />
+        android:icon="@drawable/songs_icon"/>
+
+    <item
+        android:id="@+id/nav_songs"
+        android:title="Песни"
+        android:icon="@drawable/songs_icon"/>
+
     <item
         android:id="@+id/nav_profile"
         android:title="Профиль"
-        android:icon="@drawable/user_icon" />
+        android:icon="@drawable/user_icon"/>
+
 </menu>

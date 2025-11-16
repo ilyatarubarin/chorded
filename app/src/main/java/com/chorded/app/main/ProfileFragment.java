@@ -25,6 +25,7 @@ public class ProfileFragment extends Fragment {
     public View onCreateView(@NonNull LayoutInflater inflater,
                              @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
+
         View view = inflater.inflate(R.layout.fragment_profile, container, false);
 
         auth = FirebaseAuth.getInstance();
@@ -36,12 +37,11 @@ public class ProfileFragment extends Fragment {
 
         String uid = auth.getCurrentUser().getUid();
 
-        // Получаем данные пользователя из Firestore
         db.collection("users").document(uid).get()
                 .addOnSuccessListener(doc -> {
                     tvName.setText(doc.getString("name"));
                     tvEmail.setText(doc.getString("email"));
-                    progress.setProgress(30); // временный прогресс
+                    progress.setProgress(40);
                 });
 
         return view;

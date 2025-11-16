@@ -14,6 +14,8 @@ import com.chorded.app.models.User;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
+
 public class RegisterActivity extends AppCompatActivity {
 
     private FirebaseAuth auth;
@@ -22,7 +24,7 @@ public class RegisterActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_register);//подключаем layout регистрации
+        setContentView(R.layout.activity_register);
 
         auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -45,8 +47,11 @@ public class RegisterActivity extends AppCompatActivity {
             auth.createUserWithEmailAndPassword(email, pass)
                     .addOnSuccessListener(result -> {
                         String uid = auth.getCurrentUser().getUid();
-                        User user = new User(uid, name, email);
+
+                        User user = new User(uid, name, email, new ArrayList<>());
+
                         db.collection("users").document(uid).set(user);
+
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     })

@@ -1,7 +1,7 @@
 package com.chorded.app.main;
 
 import android.os.Bundle;
-import androidx.annotation.NonNull;
+
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
@@ -15,31 +15,37 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Навигация по вкладкам
         BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
 
-        // По умолчанию открывается вкладка "Аккорды"
+        // При первом открытии показываем список песен
         getSupportFragmentManager()
                 .beginTransaction()
-                .replace(R.id.fragmentContainer, new ChordsFragment())
+                .replace(R.id.fragmentContainer, new SongsFragment())
                 .commit();
 
-        // Обработка нажатий в нижнем меню
         bottomNav.setOnItemSelectedListener(item -> {
             Fragment selected = null;
 
-            int id = item.getItemId();
-            if (id == R.id.nav_chords) selected = new ChordsFragment();
-            else if (id == R.id.nav_recommendations) selected = new RecommendationsFragment();
-            else if (id == R.id.nav_profile) selected = new ProfileFragment();
-
-            if (selected != null) {
-                getSupportFragmentManager()
-                        .beginTransaction()
-                        .replace(R.id.fragmentContainer, selected)
-                        .commit();
+            if (item.getItemId() == R.id.nav_chords) {
+                selected = new ChordsFragment();
             }
+            else if (item.getItemId() == R.id.nav_recommendations) {
+                selected = new RecommendationsFragment();
+            }
+            else if (item.getItemId() == R.id.nav_songs) {
+                selected = new SongsFragment();
+            }
+            else if (item.getItemId() == R.id.nav_profile) {
+                selected = new ProfileFragment();
+            }
+
+            getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, selected)
+                    .commit();
+
             return true;
         });
+
     }
 }
