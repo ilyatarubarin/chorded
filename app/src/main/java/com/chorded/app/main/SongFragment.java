@@ -1,86 +1,142 @@
 package com.chorded.app.main;
 
 import android.os.Bundle;
-import android.text.SpannableStringBuilder;
-import android.text.style.ForegroundColorSpan;
-import android.text.style.StyleSpan;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.LinearLayout;
+import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
-import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
+import com.bumptech.glide.Glide;
 import com.chorded.app.R;
+import com.chorded.app.models.Song;
+import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import java.util.List;
 
 public class SongFragment extends Fragment {
 
+    private static final String ARG_SONG_ID = "song_id";
+
+    private String songId;
+
+    private ImageView songIcon;
+    private TextView tvTitle, tvArtist, tvChords, tvLyrics;
+    private Button btnLearn, btnUnlearn;
+
     private FirebaseFirestore db;
+    private String uid;
+
+    private Song currentSong;
+
+    public static SongFragment newInstance(String songId) {
+        SongFragment fragment = new SongFragment();
+        Bundle args = new Bundle();
+        args.putString(ARG_SONG_ID, songId);
+        fragment.setArguments(args);
+        return fragment;
+    }
+
+    public SongFragment() {}
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        db = FirebaseFirestore.getInstance();
+        uid = FirebaseAuth.getInstance().getUid();
+
+        if (getArguments() != null) {
+            songId = getArguments().getString(ARG_SONG_ID);
+        }
+    }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_song, container, false);
 
-        LinearLayout containerView = view.findViewById(R.id.songContainer);
-        db = FirebaseFirestore.getInstance();
+        songIcon = view.findViewById(R.id.songIcon);
+        tvTitle = view.findViewById(R.id.tvSongTitle);
+        tvArtist = view.findViewById(R.id.tvSongArtist);
+        tvChords = view.findViewById(R.id.tvSongChords);
+        tvLyrics = view.findViewById(R.id.tvSongLyrics);
 
-        String title = getArguments().getString("title");
+        btnLearn = view.findViewById(R.id.btnLearnSong);
+        btnUnlearn = view.findViewById(R.id.btnUnlearnSong);
 
-        db.collection("songs").whereEqualTo("title", title).get()
-                .addOnSuccessListener(snap -> {
-                    if (snap.isEmpty()) return;
+        loadSong();
+        checkIfLearned();
 
-                    String chordPro = snap.getDocuments().get(0).getString("chordPro");
-
-                    for (String line : chordPro.split("\n")) {
-                        containerView.addView(formatLine(line));
-                    }
-                });
+        btnLearn.setOnClickListener(v -> addToLearned());
+        btnUnlearn.setOnClickListener(v -> removeFromLearned());
 
         return view;
     }
 
-    private TextView formatLine(String line) {
-        SpannableStringBuilder builder = new SpannableStringBuilder();
-        Pattern p = Pattern.compile("\\[([A-G][mM]?(?:7|sus2|sus4|add9)?)\\]");
-        Matcher m = p.matcher(line);
+    private void loadSong() {
+        db.collection("songs").document(songId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    currentSong = doc.toObject(Song.class);
+                    if (currentSong == null) return;
 
-        int last = 0;
+                    currentSong.setId(doc.getId());
 
-        while (m.find()) {
-            builder.append(line, last, m.start());
+                    tvTitle.setText(currentSong.getTitle());
+                    tvArtist.setText(currentSong.getArtist());
+                    tvChords.setText("Аккорды: " + String.join(", ", currentSong.getChords()));
+                    tvLyrics.setText(currentSong.getLyricsChordPro());
 
-            String chord = m.group(1);
-            int start = builder.length();
+                    Glide.with(this)
+                            .load(currentSong.getIconUrl())
+                            .placeholder(R.drawable.song_placeholder)
+                            .into(songIcon);
+                });
+    }
 
-            builder.append(chord);
+    private void checkIfLearned() {
+        if (uid == null) return;
 
-            builder.setSpan(new StyleSpan(android.graphics.Typeface.BOLD),
-                    start, start + chord.length(), 0);
-            builder.setSpan(new ForegroundColorSpan(
-                            ContextCompat.getColor(requireContext(), android.R.color.holo_blue_bright)),
-                    start, start + chord.length(), 0);
+        db.collection("users").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    List<String> learned = (List<String>) doc.get("learnedSongs");
+                    if (learned != null && learned.contains(songId)) {
+                        btnLearn.setVisibility(View.GONE);
+                        btnUnlearn.setVisibility(View.VISIBLE);
+                    } else {
+                        btnLearn.setVisibility(View.VISIBLE);
+                        btnUnlearn.setVisibility(View.GONE);
+                    }
+                });
+    }
 
-            last = m.end();
-        }
+    private void addToLearned() {
+        if (uid == null) return;
 
-        builder.append(line.substring(last));
+        db.collection("users").document(uid)
+                .update("learnedSongs", com.google.firebase.firestore.FieldValue.arrayUnion(songId))
+                .addOnSuccessListener(v -> {
+                    btnLearn.setVisibility(View.GONE);
+                    btnUnlearn.setVisibility(View.VISIBLE);
+                });
+    }
 
-        TextView tv = new TextView(getContext());
-        tv.setText(builder);
-        tv.setTextSize(16);
-        return tv;
+    private void removeFromLearned() {
+        if (uid == null) return;
+
+        db.collection("users").document(uid)
+                .update("learnedSongs", com.google.firebase.firestore.FieldValue.arrayRemove(songId))
+                .addOnSuccessListener(v -> {
+                    btnLearn.setVisibility(View.VISIBLE);
+                    btnUnlearn.setVisibility(View.GONE);
+                });
     }
 }

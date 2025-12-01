@@ -1,51 +1,47 @@
 package com.chorded.app.main;
 
 import android.os.Bundle;
-
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
 
 import com.chorded.app.R;
+import com.chorded.app.main.ChordsFragment;
+import com.chorded.app.main.ProfileFragment;
+import com.chorded.app.main.RecommendationsFragment;
+import com.chorded.app.main.SongsFragment;
 import com.google.android.material.bottomnavigation.BottomNavigationView;
 
 public class MainActivity extends AppCompatActivity {
+
+    private BottomNavigationView bottomNavigation;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        BottomNavigationView bottomNav = findViewById(R.id.bottomNav);
+        bottomNavigation = findViewById(R.id.bottomNavigation);
 
-        // При первом открытии показываем список песен
-        getSupportFragmentManager()
-                .beginTransaction()
-                .replace(R.id.fragmentContainer, new SongsFragment())
-                .commit();
+        openFragment(new ChordsFragment());
 
-        bottomNav.setOnItemSelectedListener(item -> {
-            Fragment selected = null;
+        bottomNavigation.setOnItemSelectedListener(item -> {
+            int id = item.getItemId();
+            Fragment fragment = null;
 
-            if (item.getItemId() == R.id.nav_chords) {
-                selected = new ChordsFragment();
-            }
-            else if (item.getItemId() == R.id.nav_recommendations) {
-                selected = new RecommendationsFragment();
-            }
-            else if (item.getItemId() == R.id.nav_songs) {
-                selected = new SongsFragment();
-            }
-            else if (item.getItemId() == R.id.nav_profile) {
-                selected = new ProfileFragment();
-            }
+            if (id == R.id.nav_chords) fragment = new ChordsFragment();
+            else if (id == R.id.nav_songs) fragment = new SongsFragment();
+            else if (id == R.id.nav_recommendations) fragment = new RecommendationsFragment();
+            else if (id == R.id.nav_profile) fragment = new ProfileFragment();
 
-            getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragmentContainer, selected)
-                    .commit();
-
+            if (fragment != null) openFragment(fragment);
             return true;
         });
+    }
 
+    private void openFragment(Fragment fragment){
+        getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, fragment)
+                .commit();
     }
 }

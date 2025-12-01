@@ -1,3 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">chorded</string>
+    <string name="app_name">сhorded</string>
+    <string name="hint_input_chords">Введите аккорды (например: C Am G)</string>
 </resources>

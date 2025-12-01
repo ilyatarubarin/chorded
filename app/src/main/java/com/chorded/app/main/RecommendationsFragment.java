@@ -1,166 +1,118 @@
 package com.chorded.app.main;
 
-import android.graphics.Color;
 import android.os.Bundle;
+import android.text.Editable;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.TextView;
-import androidx.annotation.NonNull;
+import android.widget.EditText;
+
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.chorded.app.R;
-import com.google.firebase.auth.FirebaseAuth;
+import com.chorded.app.adapters.SongAdapter;
+import com.chorded.app.models.Song;
+import com.chorded.app.utils.SimpleTextWatcher;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 
 public class RecommendationsFragment extends Fragment {
 
-    private FirebaseFirestore db;
-    private FirebaseAuth auth;
+    private EditText input;
+    private RecyclerView recycler;
+    private SongAdapter adapter;
 
-    private List<RecommendationItem> recommendations = new ArrayList<>();
+    private final List<Song> allSongs = new ArrayList<>();
+    private final List<Song> filteredSongs = new ArrayList<>();
+
+    private FirebaseFirestore db;
+
+    public RecommendationsFragment() {}
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        View view = inflater.inflate(R.layout.fragment_recommendations, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
 
-        RecyclerView recycler = view.findViewById(R.id.recyclerRec);
+        View v = inflater.inflate(R.layout.fragment_recommendations, container, false);
+
+        input = v.findViewById(R.id.inputChords);
+        recycler = v.findViewById(R.id.recyclerRecommendations);
+
         recycler.setLayoutManager(new LinearLayoutManager(getContext()));
-        RecAdapter adapter = new RecAdapter();
+        adapter = new SongAdapter(filteredSongs, song -> {});
         recycler.setAdapter(adapter);
 
-        auth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
 
-        String uid = auth.getCurrentUser().getUid();
+        loadAllSongs();
 
-        // 1️⃣ получаем аккорды пользователя
-        db.collection("users").document(uid).get()
-                .addOnSuccessListener(userDoc -> {
-                    List<String> learned = (List<String>) userDoc.get("learnedChords");
-                    if (learned == null) learned = new ArrayList<>();
+        input.addTextChangedListener(new SimpleTextWatcher() {
+            @Override
+            public void afterTextChanged(Editable s) {
+                filter(s.toString());
+            }
+        });
 
-                    List<String> finalLearned = learned;
+        return v;
+    }
 
-                    // 2️⃣ теперь загружаем песни
-                    db.collection("songs").get().addOnSuccessListener(songDocs -> {
+    private void loadAllSongs() {
+        db.collection("songs")
+                .get()
+                .addOnSuccessListener(query -> {
+                    allSongs.clear();
+                    for (var doc : query) {
+                        Song song = doc.toObject(Song.class);
+                        song.setId(doc.getId());
+                        allSongs.add(song);
+                    }
 
-                        recommendations.clear();
-
-                        for (var doc : songDocs) {
-                            String title = doc.getString("title");
-                            String artist = doc.getString("artist");
-                            List<String> chords = (List<String>) doc.get("chords");
-
-                            if (chords == null || chords.isEmpty()) continue;
-
-                            int total = chords.size();
-                            int matched = 0;
-
-                            List<String> missing = new ArrayList<>();
-
-                            // считаем совпадения и недостающие
-                            for (String chord : chords) {
-                                if (finalLearned.contains(chord)) matched++;
-                                else missing.add(chord);
-                            }
-
-                            double percent = (matched * 100.0) / total;
-
-                            // добавляем результат в список
-                            recommendations.add(new RecommendationItem(
-                                    title, artist, percent, matched, total, missing
-                            ));
-                        }
-
-                        // 3️⃣ сортируем по проценту совпадения
-                        Collections.sort(recommendations, (a, b) ->
-                                Double.compare(b.percent, a.percent));
-
-                        adapter.notifyDataSetChanged();
-                    });
+                    filter(input.getText().toString());
                 });
-
-        return view;
     }
 
-    // -----------------------------------------------------------
-    // Класс данных для рекомендации
-    // -----------------------------------------------------------
-    private static class RecommendationItem {
-        String title;
-        String artist;
-        double percent;
-        int matched;
-        int total;
-        List<String> missing;
+    /**
+     * Фильтрация: пользователь вводит аккорды, выдаём подходящие песни в порядке
+     * количества совпадений (matchScore).
+     */
+    private void filter(String text) {
+        filteredSongs.clear();
 
-        RecommendationItem(String title, String artist, double percent,
-                           int matched, int total, List<String> missing) {
-            this.title = title;
-            this.artist = artist;
-            this.percent = percent;
-            this.matched = matched;
-            this.total = total;
-            this.missing = missing;
-        }
-    }
-
-    // -----------------------------------------------------------
-    // Адаптер списка рекомендаций
-    // -----------------------------------------------------------
-    private class RecAdapter extends RecyclerView.Adapter<RecAdapter.Holder> {
-
-        @NonNull
-        @Override
-        public Holder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
-            View v = LayoutInflater.from(parent.getContext())
-                    .inflate(R.layout.item_recommendation, parent, false);
-            return new Holder(v);
+        // если строка пустая → выводим ВСЕ песни
+        if (text.trim().isEmpty()) {
+            filteredSongs.addAll(allSongs);
+            adapter.notifyDataSetChanged();
+            return;
         }
 
-        @Override
-        public void onBindViewHolder(@NonNull Holder h, int pos) {
-            RecommendationItem item = recommendations.get(pos);
+        String[] entered = text.toUpperCase().replace(",", " ").split(" +");
 
-            h.title.setText(item.title + " — " + item.artist);
-            h.percent.setText(String.format("Совпадение: %.0f%%", item.percent));
-            h.summary.setText(item.matched + "/" + item.total + " аккордов");
+        for (Song song : allSongs) {
+            int score = 0;
 
-            if (item.missing.isEmpty()) {
-                h.missing.setText("Все аккорды изучены ✔");
-                h.missing.setTextColor(Color.parseColor("#4CAF50"));
-            } else {
-                h.missing.setText("Нужно выучить: " + item.missing);
-                h.missing.setTextColor(Color.parseColor("#F44336"));
+            if (song.getChords() != null) {
+                for (String chord : entered) {
+                    if (song.getChords().contains(chord)) {
+                        score++;
+                    }
+                }
+            }
+
+            if (score > 0) {
+                song.setMatchScore(score);
+                filteredSongs.add(song);
             }
         }
 
-        @Override
-        public int getItemCount() {
-            return recommendations.size();
-        }
+        // сортировка по убыванию matchScore
+        filteredSongs.sort((a, b) -> b.getMatchScore() - a.getMatchScore());
 
-        class Holder extends RecyclerView.ViewHolder {
-            TextView title, percent, summary, missing;
-            Holder(View v) {
-                super(v);
-                title = v.findViewById(R.id.recTitle);
-                percent = v.findViewById(R.id.recPercent);
-                summary = v.findViewById(R.id.recSummary);
-                missing = v.findViewById(R.id.recMissing);
-            }
-        }
+        adapter.notifyDataSetChanged();
     }
 }

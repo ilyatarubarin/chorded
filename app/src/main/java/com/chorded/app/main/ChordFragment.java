@@ -4,15 +4,19 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
+import android.widget.ImageView;
 import android.widget.TextView;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
+import com.bumptech.glide.Glide;
 import com.chorded.app.R;
-import com.google.firebase.auth.FirebaseAuth;
+import com.chorded.app.adapters.SongAdapter;
+import com.chorded.app.models.Chord;
+import com.chorded.app.models.Song;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
@@ -20,92 +24,87 @@ import java.util.List;
 
 public class ChordFragment extends Fragment {
 
-    private static final String ARG_NAME = "chordName";
+    private static final String ARG_CHORD_ID = "chord_id";
 
-    private String chordName;
+    private String chordId;
 
-    public static ChordFragment newInstance(String name) {
+    private ImageView chordImage;
+    private TextView chordTitle, chordDescription;
+    private RecyclerView recyclerSongs;
+
+    private SongAdapter adapter;
+    private final List<Song> chordSongs = new ArrayList<>();
+    private FirebaseFirestore db;
+
+    public static ChordFragment newInstance(String chordId) {
         ChordFragment fragment = new ChordFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_NAME, name);
-        fragment.setArguments(args);
+        Bundle b = new Bundle();
+        b.putString(ARG_CHORD_ID, chordId);
+        fragment.setArguments(b);
         return fragment;
     }
 
-    private FirebaseFirestore db;
-    private FirebaseAuth auth;
+    public ChordFragment() {}
+
+    @Override
+    public void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        chordId = getArguments() != null ? getArguments().getString(ARG_CHORD_ID) : null;
+        db = FirebaseFirestore.getInstance();
+    }
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
-        View v = inflater.inflate(R.layout.fragment_chord, container, false);
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
 
-        db = FirebaseFirestore.getInstance();
-        auth = FirebaseAuth.getInstance();
+        View view = inflater.inflate(R.layout.fragment_chord_info, container, false);
 
-        TextView tvName = v.findViewById(R.id.tvChordName);
-        TextView tvDiagram = v.findViewById(R.id.tvChordDiagram);
-        TextView tvStatus = v.findViewById(R.id.tvChordStatus);
-        Button btnLearn = v.findViewById(R.id.btnLearnChord);
+        chordImage = view.findViewById(R.id.chordImage);
+        chordTitle = view.findViewById(R.id.chordTitle);
+        chordDescription = view.findViewById(R.id.chordDescription);
 
-        if (getArguments() != null)
-            chordName = getArguments().getString(ARG_NAME);
+        recyclerSongs = view.findViewById(R.id.chordSongsRecycler);
+        recyclerSongs.setLayoutManager(new LinearLayoutManager(getContext()));
+        adapter = new SongAdapter(chordSongs, song -> {});
+        recyclerSongs.setAdapter(adapter);
 
-        tvName.setText(chordName);
+        loadChordInfo();
+        loadSongsWithChord();
 
-        // Загружаем аккорд из Firestore
-        db.collection("chords").document(chordName).get()
+        return view;
+    }
+
+    private void loadChordInfo() {
+        db.collection("chords").document(chordId)
+                .get()
                 .addOnSuccessListener(doc -> {
-                    if (doc.exists()) {
-                        List<String> frets = (List<String>) doc.get("diagramFrets");
-                        List<Long> fingers = (List<Long>) doc.get("diagramFingers");
+                    Chord c = doc.toObject(Chord.class);
+                    if (c == null) return;
 
-                        // диаграмма в текстовом виде
-                        String diagram = "Струны: " + frets + "\nПальцы: " + fingers;
-                        tvDiagram.setText(diagram);
-                    }
+                    chordTitle.setText(c.getName());
+                    chordDescription.setText(c.getDescription());
+
+                    Glide.with(this)
+                            .load(c.getImageUrl())
+                            .placeholder(R.drawable.chord_placeholder)
+                            .into(chordImage);
                 });
+    }
 
-        // Проверяем, изучен ли аккорд
-        String uid = auth.getCurrentUser().getUid();
-
-        db.collection("users").document(uid).get()
-                .addOnSuccessListener(doc -> {
-                    List<String> learned = (List<String>) doc.get("learnedChords");
-                    if (learned == null) learned = new ArrayList<>();
-
-                    if (learned.contains(chordName)) {
-                        tvStatus.setText("Аккорд изучен ✔");
-                        btnLearn.setText("Удалить из изученных");
-
-                    } else {
-                        tvStatus.setText("Аккорд пока не изучен");
-                        btnLearn.setText("Выучить аккорд");
+    private void loadSongsWithChord() {
+        db.collection("songs")
+                .whereArrayContains("chords", chordId)
+                .get()
+                .addOnSuccessListener(query -> {
+                    chordSongs.clear();
+                    for (var doc : query) {
+                        Song s = doc.toObject(Song.class);
+                        s.setId(doc.getId());
+                        chordSongs.add(s);
                     }
-
-                    // обработчик кнопки
-                    List<String> finalLearned = learned;
-                    btnLearn.setOnClickListener(v2 -> {
-
-                        boolean already = finalLearned.contains(chordName);
-
-                        if (already) {
-                            finalLearned.remove(chordName);
-                            tvStatus.setText("Аккорд пока не изучен");
-                            btnLearn.setText("Выучить аккорд");
-                        } else {
-                            finalLearned.add(chordName);
-                            tvStatus.setText("Аккорд изучен ✔");
-                            btnLearn.setText("Удалить из изученных");
-                        }
-
-                        db.collection("users").document(uid)
-                                .update("learnedChords", finalLearned);
-                    });
+                    adapter.notifyDataSetChanged();
                 });
-
-        return v;
     }
 }

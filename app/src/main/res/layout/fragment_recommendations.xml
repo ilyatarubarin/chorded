@@ -1,12 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:orientation="vertical"
+    android:padding="12dp"
     android:layout_width="match_parent"
     android:layout_height="match_parent">
 
-    <androidx.recyclerview.widget.RecyclerView
-        android:id="@+id/recyclerRec"
+    <EditText
+        android:id="@+id/inputChords"
+        android:hint="Введите аккорды (например: C Am G)"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
-        android:padding="8dp"/>
+        android:layout_height="wrap_content"
+        android:inputType="text"
+        android:imeOptions="actionDone"/>
 
+    <androidx.recyclerview.widget.RecyclerView
+        android:id="@+id/recyclerRecommendations"
+        android:layout_marginTop="10dp"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"/>
 </LinearLayout>

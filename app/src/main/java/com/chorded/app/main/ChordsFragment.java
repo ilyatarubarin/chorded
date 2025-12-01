@@ -4,88 +4,69 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.ListView;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.chorded.app.R;
+import com.chorded.app.adapters.ChordGridAdapter;
+import com.chorded.app.models.Chord;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 public class ChordsFragment extends Fragment {
 
-    private ListView listChords;
-    private ArrayAdapter<String> adapter;
+    private RecyclerView recycler;
+    private ChordGridAdapter adapter;
+    private final List<Chord> chordList = new ArrayList<>();
 
-    private List<String> chords = new ArrayList<>();
     private FirebaseFirestore db;
+
+    public ChordsFragment() {}
 
     @Nullable
     @Override
-    public View onCreateView(@NonNull LayoutInflater inflater,
-                             @Nullable ViewGroup container,
-                             @Nullable Bundle savedInstanceState) {
+    public View onCreateView(LayoutInflater inflater, ViewGroup container,
+                             Bundle savedInstanceState) {
 
         View view = inflater.inflate(R.layout.fragment_chords, container, false);
 
         db = FirebaseFirestore.getInstance();
-        listChords = view.findViewById(R.id.listChords);
 
-        adapter = new ArrayAdapter<>(
-                requireContext(),
-                android.R.layout.simple_list_item_1,
-                chords
-        );
+        recycler = view.findViewById(R.id.recyclerChords);
+        recycler.setLayoutManager(new GridLayoutManager(getContext(), 3));
 
-        listChords.setAdapter(adapter);
+        adapter = new ChordGridAdapter(chordList, chord -> openChord(chord.getId()));
+        recycler.setAdapter(adapter);
 
         loadChords();
-        setupItemClick();
 
         return view;
     }
 
-    // ----------------------------------------------------------
-    //  Загрузка всех аккордов из Firestore → коллекция "chords"
-    // ----------------------------------------------------------
     private void loadChords() {
-        db.collection("chords").get()
+        db.collection("chords")
+                .get()
                 .addOnSuccessListener(query -> {
-
-                    chords.clear();
-
+                    chordList.clear();
                     for (var doc : query) {
-                        String chordName = doc.getId();
-                        chords.add(chordName);
+                        Chord c = doc.toObject(Chord.class);
+                        c.setId(doc.getId());
+                        chordList.add(c);
                     }
-
-                    // сортируем, чтобы по алфавиту
-                    Collections.sort(chords);
-
                     adapter.notifyDataSetChanged();
                 });
     }
 
-    // ----------------------------------------------------------
-    //  При клике открываем экран выбранного аккорда
-    // ----------------------------------------------------------
-    private void setupItemClick() {
-        listChords.setOnItemClickListener((AdapterView<?> parent, View view, int position, long id) -> {
-
-            String selectedChord = chords.get(position);
-
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragmentContainer, ChordFragment.newInstance(selectedChord))
-                    .addToBackStack(null)
-                    .commit();
-        });
+    private void openChord(String chordId) {
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, ChordFragment.newInstance(chordId))
+                .addToBackStack(null)
+                .commit();
     }
 }
