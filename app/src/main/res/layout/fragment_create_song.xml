@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:padding="16dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical">
+
+        <EditText
+            android:id="@+id/etTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Название песни"/>
+
+        <EditText
+            android:id="@+id/etArtist"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Исполнитель"/>
+
+        <EditText
+            android:id="@+id/etChords"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Аккорды (через запятую: C,G,Am,F)"/>
+
+        <EditText
+            android:id="@+id/etIconUrl"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Icon URL (GitHub raw)"/>
+
+        <EditText
+            android:id="@+id/etLyrics"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Текст песни"
+            android:minLines="6"
+            android:gravity="top"/>
+
+        <Button
+            android:id="@+id/btnCreateSong"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Добавить песню"
+            android:layout_marginTop="16dp"/>
+
+    </LinearLayout>
+</ScrollView>

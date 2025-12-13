@@ -17,6 +17,19 @@
             android:text="user@example.com"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"/>
+        <TextView
+            android:id="@+id/tvUserRole"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Role"
+            android:textStyle="italic"/>
+
+        <Button
+            android:id="@+id/btnCreateSong"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Добавить песню"
+            android:visibility="gone"/>
 
         <TextView
             android:id="@+id/tvLearnedSongsCount"

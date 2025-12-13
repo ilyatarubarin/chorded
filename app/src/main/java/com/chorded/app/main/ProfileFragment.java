@@ -20,8 +20,13 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 import java.util.List;
 
+import android.widget.Button;
+import com.chorded.app.models.User;
+import com.chorded.app.creator.CreateSongFragment;
 public class ProfileFragment extends Fragment {
 
+    private TextView tvRole;
+    private Button btnCreateSong;
     private TextView tvEmail, tvCount;
     private RecyclerView recycler;
 
@@ -39,6 +44,8 @@ public class ProfileFragment extends Fragment {
                              Bundle savedInstanceState) {
 
         View v = inflater.inflate(R.layout.fragment_profile, container, false);
+        tvRole = v.findViewById(R.id.tvUserRole);
+        btnCreateSong = v.findViewById(R.id.btnCreateSong);
 
         tvEmail = v.findViewById(R.id.tvUserEmail);
         tvCount = v.findViewById(R.id.tvLearnedSongsCount);
@@ -51,10 +58,47 @@ public class ProfileFragment extends Fragment {
         db = FirebaseFirestore.getInstance();
         uid = FirebaseAuth.getInstance().getUid();
 
-        loadProfileInfo();
+        loadUserInfo();
         loadLearnedSongs();
 
+
+
         return v;
+    }
+    private void loadUserInfo() {
+        if (uid == null) return;
+
+        db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    User user = doc.toObject(User.class);
+                    if (user == null) return;
+
+                    // email
+                    tvEmail.setText(user.getEmail());
+
+                    // role
+                    String role = user.getRole();
+                    if (role == null) role = "user";
+
+                    if (role.equals("creator")) {
+                        tvRole.setText("Creator");
+                        btnCreateSong.setVisibility(View.VISIBLE);
+                    } else {
+                        tvRole.setText("User");
+                        btnCreateSong.setVisibility(View.GONE);
+                    }
+                });
+        btnCreateSong.setOnClickListener(v -> {
+            requireActivity()
+                    .getSupportFragmentManager()
+                    .beginTransaction()
+                    .replace(R.id.fragmentContainer, new CreateSongFragment())
+                    .addToBackStack(null)
+                    .commit();
+        });
+
     }
 
     private void loadProfileInfo() {

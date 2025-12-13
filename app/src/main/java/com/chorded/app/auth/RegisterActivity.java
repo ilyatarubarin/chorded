@@ -49,7 +49,7 @@ public class RegisterActivity extends AppCompatActivity {
                         String uid = auth.getCurrentUser().getUid();
 
                         User user = new User(uid, name, email, new ArrayList<>());
-
+                        user.setRole("user");
                         db.collection("users").document(uid).set(user);
 
                         startActivity(new Intent(this, MainActivity.class));
