@@ -5,10 +5,7 @@ import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.Button;
-import android.widget.ImageView;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -16,6 +13,7 @@ import androidx.fragment.app.Fragment;
 import com.bumptech.glide.Glide;
 import com.chorded.app.R;
 import com.chorded.app.models.Song;
+import com.chorded.app.session.AppSession;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -50,8 +48,6 @@ public class SongFragment extends Fragment {
         return fragment;
     }
 
-    public SongFragment() {}
-
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -71,10 +67,8 @@ public class SongFragment extends Fragment {
             ViewGroup container,
             Bundle savedInstanceState
     ) {
-
         View view = inflater.inflate(R.layout.fragment_song, container, false);
 
-        // Bind UI
         songIcon = view.findViewById(R.id.songIcon);
         tvTitle = view.findViewById(R.id.tvSongTitle);
         tvArtist = view.findViewById(R.id.tvSongArtist);
@@ -87,10 +81,16 @@ public class SongFragment extends Fragment {
         btnPause = view.findViewById(R.id.btnPauseSong);
 
         loadSong();
-        checkIfLearned();
 
-        btnLearn.setOnClickListener(v -> addToLearned());
-        btnUnlearn.setOnClickListener(v -> removeFromLearned());
+        if (AppSession.get().isGuest()) {
+            // гость: только скрываем кнопки
+            btnLearn.setVisibility(View.GONE);
+            btnUnlearn.setVisibility(View.GONE);
+        } else {
+            checkIfLearned();
+            btnLearn.setOnClickListener(v -> addToLearned());
+            btnUnlearn.setOnClickListener(v -> removeFromLearned());
+        }
 
         btnPlay.setOnClickListener(v -> {
             if (currentSong != null && currentSong.getMp3Url() != null) {
@@ -104,7 +104,7 @@ public class SongFragment extends Fragment {
     }
 
     // ----------------------------
-    // LOAD SONG DATA
+    // LOAD SONG
     // ----------------------------
 
     private void loadSong() {
@@ -129,7 +129,7 @@ public class SongFragment extends Fragment {
     }
 
     // ----------------------------
-    // LEARNED SONGS
+    // LEARNED (USER ONLY)
     // ----------------------------
 
     private void checkIfLearned() {
@@ -139,13 +139,7 @@ public class SongFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(doc -> {
                     List<String> learned = (List<String>) doc.get("learnedSongs");
-                    if (learned != null && learned.contains(songId)) {
-                        btnLearn.setVisibility(View.GONE);
-                        btnUnlearn.setVisibility(View.VISIBLE);
-                    } else {
-                        btnLearn.setVisibility(View.VISIBLE);
-                        btnUnlearn.setVisibility(View.GONE);
-                    }
+                    toggleLearned(learned != null && learned.contains(songId));
                 });
     }
 
@@ -155,10 +149,7 @@ public class SongFragment extends Fragment {
         db.collection("users").document(uid)
                 .update("learnedSongs",
                         com.google.firebase.firestore.FieldValue.arrayUnion(songId))
-                .addOnSuccessListener(v -> {
-                    btnLearn.setVisibility(View.GONE);
-                    btnUnlearn.setVisibility(View.VISIBLE);
-                });
+                .addOnSuccessListener(v -> toggleLearned(true));
     }
 
     private void removeFromLearned() {
@@ -167,10 +158,12 @@ public class SongFragment extends Fragment {
         db.collection("users").document(uid)
                 .update("learnedSongs",
                         com.google.firebase.firestore.FieldValue.arrayRemove(songId))
-                .addOnSuccessListener(v -> {
-                    btnLearn.setVisibility(View.VISIBLE);
-                    btnUnlearn.setVisibility(View.GONE);
-                });
+                .addOnSuccessListener(v -> toggleLearned(false));
+    }
+
+    private void toggleLearned(boolean learned) {
+        btnLearn.setVisibility(learned ? View.GONE : View.VISIBLE);
+        btnUnlearn.setVisibility(learned ? View.VISIBLE : View.GONE);
     }
 
     // ----------------------------
@@ -186,7 +179,6 @@ public class SongFragment extends Fragment {
             mediaPlayer = new MediaPlayer();
             mediaPlayer.setDataSource(url);
             mediaPlayer.prepareAsync();
-
             mediaPlayer.setOnPreparedListener(MediaPlayer::start);
 
         } catch (Exception e) {

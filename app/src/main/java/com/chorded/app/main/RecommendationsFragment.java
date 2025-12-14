@@ -16,6 +16,7 @@ import com.chorded.app.R;
 import com.chorded.app.adapters.SongAdapter;
 import com.chorded.app.models.Song;
 import com.chorded.app.utils.SimpleTextWatcher;
+import com.chorded.app.session.AppSession;
 import com.google.firebase.firestore.FirebaseFirestore;
 
 import java.util.ArrayList;
@@ -36,15 +37,17 @@ public class RecommendationsFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container,
-                             Bundle savedInstanceState) {
-
+    public View onCreateView(
+            LayoutInflater inflater,
+            ViewGroup container,
+            Bundle savedInstanceState
+    ) {
         View v = inflater.inflate(R.layout.fragment_recommendations, container, false);
 
         input = v.findViewById(R.id.inputChords);
         recycler = v.findViewById(R.id.recyclerRecommendations);
 
-        recycler.setLayoutManager(new LinearLayoutManager(getContext()));
+        recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
         adapter = new SongAdapter(filteredSongs, song -> openSong(song.getId()));
         recycler.setAdapter(adapter);
 
@@ -62,45 +65,59 @@ public class RecommendationsFragment extends Fragment {
         return v;
     }
 
+    // ----------------------------------
+    // LOAD SONGS
+    // ----------------------------------
+
     private void loadAllSongs() {
         db.collection("songs")
                 .get()
                 .addOnSuccessListener(query -> {
                     allSongs.clear();
+
                     for (var doc : query) {
                         Song song = doc.toObject(Song.class);
+                        if (song == null) continue;
+
                         song.setId(doc.getId());
                         allSongs.add(song);
                     }
 
+                    // для guest и user логика одинаковая
                     filter(input.getText().toString());
+                })
+                .addOnFailureListener(e -> {
+                    // полезно для отладки
+                    e.printStackTrace();
                 });
     }
 
-    /**
-     * Фильтрация: пользователь вводит аккорды, выдаём подходящие песни в порядке
-     * количества совпадений (matchScore).
-     */
+    // ----------------------------------
+    // FILTER
+    // ----------------------------------
+
     private void filter(String text) {
         filteredSongs.clear();
 
-        // если строка пустая → выводим ВСЕ песни
         if (text.trim().isEmpty()) {
             filteredSongs.addAll(allSongs);
             adapter.notifyDataSetChanged();
             return;
         }
 
-        String[] entered = text.toUpperCase().replace(",", " ").split(" +");
+        String[] entered = text
+                .toUpperCase()
+                .replace(",", " ")
+                .trim()
+                .split("\\s+");
 
         for (Song song : allSongs) {
-            int score = 0;
+            if (song.getChords() == null) continue;
 
-            if (song.getChords() != null) {
-                for (String chord : entered) {
-                    if (song.getChords().contains(chord)) {
-                        score++;
-                    }
+            int score = 0;
+            for (String chord : entered) {
+                if (song.getChords().contains(chord)) {
+                    score++;
                 }
             }
 
@@ -110,13 +127,20 @@ public class RecommendationsFragment extends Fragment {
             }
         }
 
-        // сортировка по убыванию matchScore
-        filteredSongs.sort((a, b) -> b.getMatchScore() - a.getMatchScore());
+        filteredSongs.sort((a, b) ->
+                Integer.compare(b.getMatchScore(), a.getMatchScore())
+        );
 
         adapter.notifyDataSetChanged();
     }
+
+    // ----------------------------------
+    // NAVIGATION
+    // ----------------------------------
+
     private void openSong(String songId) {
-        requireActivity().getSupportFragmentManager()
+        requireActivity()
+                .getSupportFragmentManager()
                 .beginTransaction()
                 .replace(R.id.fragmentContainer, SongFragment.newInstance(songId))
                 .addToBackStack(null)

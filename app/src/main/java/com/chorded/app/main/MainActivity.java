@@ -3,7 +3,7 @@ package com.chorded.app.main;
 import android.os.Bundle;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.fragment.app.Fragment;
-
+import com.chorded.app.session.AppSession;
 import com.chorded.app.R;
 import com.chorded.app.main.ChordsFragment;
 import com.chorded.app.main.ProfileFragment;
@@ -18,6 +18,8 @@ public class MainActivity extends AppCompatActivity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        AppSession.get().init(this);
         setContentView(R.layout.activity_main);
 
         bottomNavigation = findViewById(R.id.bottomNavigation);

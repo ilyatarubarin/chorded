@@ -22,6 +22,7 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 import java.util.List;
 
+
 public class ChordFragment extends Fragment {
 
     private static final String ARG_CHORD_ID = "chord_id";
@@ -76,7 +77,8 @@ public class ChordFragment extends Fragment {
         return view;
     }
 
-    private void loadChordInfo() {
+    private void loadChordInfo()
+    {
         db.collection("chords").document(chordId)
                 .get()
                 .addOnSuccessListener(doc -> {
@@ -93,7 +95,8 @@ public class ChordFragment extends Fragment {
                 });
     }
 
-    private void loadSongsWithChord() {
+    private void loadSongsWithChord()
+    {
         db.collection("songs")
                 .whereArrayContains("chords", chordId)
                 .get()

@@ -2,15 +2,13 @@ package com.chorded.app.auth;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.widget.Button;
-import android.widget.EditText;
-import android.widget.TextView;
-import android.widget.Toast;
+import android.widget.*;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.chorded.app.R;
 import com.chorded.app.main.MainActivity;
+import com.chorded.app.session.AppSession;
 import com.google.firebase.auth.FirebaseAuth;
 
 public class LoginActivity extends AppCompatActivity {
@@ -24,30 +22,38 @@ public class LoginActivity extends AppCompatActivity {
 
         auth = FirebaseAuth.getInstance();
 
-        EditText emailInput = findViewById(R.id.inputEmail);
-        EditText passwordInput = findViewById(R.id.inputPassword);
+        EditText email = findViewById(R.id.inputEmail);
+        EditText pass = findViewById(R.id.inputPassword);
         Button btnLogin = findViewById(R.id.btnLogin);
-        TextView tvRegister = findViewById(R.id.tvRegister);
+        Button btnGuest = findViewById(R.id.btnGuest);
 
+        // ---------- LOGIN ----------
         btnLogin.setOnClickListener(v -> {
-            String email = emailInput.getText().toString().trim();
-            String pass = passwordInput.getText().toString().trim();
+            auth.signInWithEmailAndPassword(
+                    email.getText().toString().trim(),
+                    pass.getText().toString().trim()
+            ).addOnSuccessListener(r -> {
+                AppSession.get().startAuth(this, r.getUser().getUid());
+                startActivity(new Intent(this, MainActivity.class));
+                finish();
+            }).addOnFailureListener(e ->
+                    Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show()
+            );
+        });
 
-            if (email.isEmpty() || pass.isEmpty()) {
-                Toast.makeText(this, "Введите email и пароль", Toast.LENGTH_SHORT).show();
-                return;
-            }
-
-            auth.signInWithEmailAndPassword(email, pass)
-                    .addOnSuccessListener(r -> {
+        // ---------- GUEST ----------
+        btnGuest.setOnClickListener(v -> {
+            FirebaseAuth.getInstance()
+                    .signInAnonymously()
+                    .addOnSuccessListener(result -> {
+                        AppSession.get().startGuest(this);
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     })
                     .addOnFailureListener(e ->
-                            Toast.makeText(this, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show()
+                    );
         });
 
-        tvRegister.setOnClickListener(v ->
-                startActivity(new Intent(this, RegisterActivity.class)));
     }
 }
