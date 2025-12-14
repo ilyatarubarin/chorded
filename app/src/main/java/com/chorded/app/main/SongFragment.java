@@ -2,9 +2,7 @@ package com.chorded.app.main;
 
 import android.media.MediaPlayer;
 import android.os.Bundle;
-import android.view.LayoutInflater;
-import android.view.View;
-import android.view.ViewGroup;
+import android.view.*;
 import android.widget.*;
 
 import androidx.annotation.Nullable;
@@ -14,6 +12,7 @@ import com.bumptech.glide.Glide;
 import com.chorded.app.R;
 import com.chorded.app.models.Song;
 import com.chorded.app.session.AppSession;
+import com.chorded.app.session.GuestStorage;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -33,6 +32,9 @@ public class SongFragment extends Fragment {
     // Firebase
     private FirebaseFirestore db;
     private String uid;
+
+    // Guest
+    private GuestStorage guestStorage;
 
     // Data
     private Song currentSong;
@@ -54,6 +56,7 @@ public class SongFragment extends Fragment {
 
         db = FirebaseFirestore.getInstance();
         uid = FirebaseAuth.getInstance().getUid();
+        guestStorage = new GuestStorage(requireContext());
 
         if (getArguments() != null) {
             songId = getArguments().getString(ARG_SONG_ID);
@@ -81,16 +84,10 @@ public class SongFragment extends Fragment {
         btnPause = view.findViewById(R.id.btnPauseSong);
 
         loadSong();
+        checkLearned();
 
-        if (AppSession.get().isGuest()) {
-            // гость: только скрываем кнопки
-            btnLearn.setVisibility(View.GONE);
-            btnUnlearn.setVisibility(View.GONE);
-        } else {
-            checkIfLearned();
-            btnLearn.setOnClickListener(v -> addToLearned());
-            btnUnlearn.setOnClickListener(v -> removeFromLearned());
-        }
+        btnLearn.setOnClickListener(v -> addToLearned());
+        btnUnlearn.setOnClickListener(v -> removeFromLearned());
 
         btnPlay.setOnClickListener(v -> {
             if (currentSong != null && currentSong.getMp3Url() != null) {
@@ -129,39 +126,62 @@ public class SongFragment extends Fragment {
     }
 
     // ----------------------------
-    // LEARNED (USER ONLY)
+    // LEARNED SONGS (USER + GUEST)
     // ----------------------------
 
-    private void checkIfLearned() {
+    private void checkLearned() {
+        // 👻 GUEST
+        if (AppSession.get().isGuest()) {
+            toggle(guestStorage.isLearned(songId));
+            return;
+        }
+
+        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
                 .get()
                 .addOnSuccessListener(doc -> {
                     List<String> learned = (List<String>) doc.get("learnedSongs");
-                    toggleLearned(learned != null && learned.contains(songId));
+                    toggle(learned != null && learned.contains(songId));
                 });
     }
 
     private void addToLearned() {
+        // 👻 GUEST
+        if (AppSession.get().isGuest()) {
+            guestStorage.addSong(songId);
+            toggle(true);
+            return;
+        }
+
+        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
                 .update("learnedSongs",
                         com.google.firebase.firestore.FieldValue.arrayUnion(songId))
-                .addOnSuccessListener(v -> toggleLearned(true));
+                .addOnSuccessListener(v -> toggle(true));
     }
 
     private void removeFromLearned() {
+        // 👻 GUEST
+        if (AppSession.get().isGuest()) {
+            guestStorage.removeSong(songId);
+            toggle(false);
+            return;
+        }
+
+        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
                 .update("learnedSongs",
                         com.google.firebase.firestore.FieldValue.arrayRemove(songId))
-                .addOnSuccessListener(v -> toggleLearned(false));
+                .addOnSuccessListener(v -> toggle(false));
     }
 
-    private void toggleLearned(boolean learned) {
+    private void toggle(boolean learned) {
         btnLearn.setVisibility(learned ? View.GONE : View.VISIBLE);
         btnUnlearn.setVisibility(learned ? View.VISIBLE : View.GONE);
     }
