@@ -14,10 +14,15 @@ public class Song {
     private int difficulty;
     private List<String> genres;
     private String lyricsChordPro;  // текст песни в ChordPro формате (строка)
-    private String iconUrl;         // ссылка на Storage / публичная ссылка
+    private String iconUrl;
+    private String mp3Url;
+    private int matchScore = 0;
+    public String getMp3Url() {
+        return mp3Url;
+    }// ссылка на Storage / публичная ссылка
 
     // Временное поле в рантайме — для сортировки/фильтра
-    private int matchScore = 0;
+
 
     public Song() {}
 

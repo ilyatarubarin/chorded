@@ -1,5 +1,6 @@
 package com.chorded.app.main;
 
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -7,6 +8,7 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -25,14 +27,20 @@ public class SongFragment extends Fragment {
 
     private String songId;
 
+    // UI
     private ImageView songIcon;
     private TextView tvTitle, tvArtist, tvChords, tvLyrics;
-    private Button btnLearn, btnUnlearn;
+    private Button btnLearn, btnUnlearn, btnPlay, btnPause;
 
+    // Firebase
     private FirebaseFirestore db;
     private String uid;
 
+    // Data
     private Song currentSong;
+
+    // Audio
+    private MediaPlayer mediaPlayer;
 
     public static SongFragment newInstance(String songId) {
         SongFragment fragment = new SongFragment();
@@ -58,10 +66,15 @@ public class SongFragment extends Fragment {
 
     @Nullable
     @Override
-    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+    public View onCreateView(
+            LayoutInflater inflater,
+            ViewGroup container,
+            Bundle savedInstanceState
+    ) {
 
         View view = inflater.inflate(R.layout.fragment_song, container, false);
 
+        // Bind UI
         songIcon = view.findViewById(R.id.songIcon);
         tvTitle = view.findViewById(R.id.tvSongTitle);
         tvArtist = view.findViewById(R.id.tvSongArtist);
@@ -70,6 +83,8 @@ public class SongFragment extends Fragment {
 
         btnLearn = view.findViewById(R.id.btnLearnSong);
         btnUnlearn = view.findViewById(R.id.btnUnlearnSong);
+        btnPlay = view.findViewById(R.id.btnPlaySong);
+        btnPause = view.findViewById(R.id.btnPauseSong);
 
         loadSong();
         checkIfLearned();
@@ -77,8 +92,20 @@ public class SongFragment extends Fragment {
         btnLearn.setOnClickListener(v -> addToLearned());
         btnUnlearn.setOnClickListener(v -> removeFromLearned());
 
+        btnPlay.setOnClickListener(v -> {
+            if (currentSong != null && currentSong.getMp3Url() != null) {
+                playSong(currentSong.getMp3Url());
+            }
+        });
+
+        btnPause.setOnClickListener(v -> pauseSong());
+
         return view;
     }
+
+    // ----------------------------
+    // LOAD SONG DATA
+    // ----------------------------
 
     private void loadSong() {
         db.collection("songs").document(songId)
@@ -101,6 +128,10 @@ public class SongFragment extends Fragment {
                 });
     }
 
+    // ----------------------------
+    // LEARNED SONGS
+    // ----------------------------
+
     private void checkIfLearned() {
         if (uid == null) return;
 
@@ -122,7 +153,8 @@ public class SongFragment extends Fragment {
         if (uid == null) return;
 
         db.collection("users").document(uid)
-                .update("learnedSongs", com.google.firebase.firestore.FieldValue.arrayUnion(songId))
+                .update("learnedSongs",
+                        com.google.firebase.firestore.FieldValue.arrayUnion(songId))
                 .addOnSuccessListener(v -> {
                     btnLearn.setVisibility(View.GONE);
                     btnUnlearn.setVisibility(View.VISIBLE);
@@ -133,10 +165,47 @@ public class SongFragment extends Fragment {
         if (uid == null) return;
 
         db.collection("users").document(uid)
-                .update("learnedSongs", com.google.firebase.firestore.FieldValue.arrayRemove(songId))
+                .update("learnedSongs",
+                        com.google.firebase.firestore.FieldValue.arrayRemove(songId))
                 .addOnSuccessListener(v -> {
                     btnLearn.setVisibility(View.VISIBLE);
                     btnUnlearn.setVisibility(View.GONE);
                 });
+    }
+
+    // ----------------------------
+    // AUDIO
+    // ----------------------------
+
+    private void playSong(String url) {
+        try {
+            if (mediaPlayer != null) {
+                mediaPlayer.release();
+            }
+
+            mediaPlayer = new MediaPlayer();
+            mediaPlayer.setDataSource(url);
+            mediaPlayer.prepareAsync();
+
+            mediaPlayer.setOnPreparedListener(MediaPlayer::start);
+
+        } catch (Exception e) {
+            Toast.makeText(getContext(), "Ошибка воспроизведения", Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    private void pauseSong() {
+        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
+            mediaPlayer.pause();
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        if (mediaPlayer != null) {
+            mediaPlayer.release();
+            mediaPlayer = null;
+        }
     }
 }

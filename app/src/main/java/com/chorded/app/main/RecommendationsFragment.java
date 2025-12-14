@@ -45,7 +45,7 @@ public class RecommendationsFragment extends Fragment {
         recycler = v.findViewById(R.id.recyclerRecommendations);
 
         recycler.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new SongAdapter(filteredSongs, song -> {});
+        adapter = new SongAdapter(filteredSongs, song -> openSong(song.getId()));
         recycler.setAdapter(adapter);
 
         db = FirebaseFirestore.getInstance();
@@ -114,5 +114,12 @@ public class RecommendationsFragment extends Fragment {
         filteredSongs.sort((a, b) -> b.getMatchScore() - a.getMatchScore());
 
         adapter.notifyDataSetChanged();
+    }
+    private void openSong(String songId) {
+        requireActivity().getSupportFragmentManager()
+                .beginTransaction()
+                .replace(R.id.fragmentContainer, SongFragment.newInstance(songId))
+                .addToBackStack(null)
+                .commit();
     }
 }

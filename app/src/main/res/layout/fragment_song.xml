@@ -18,6 +18,18 @@
             android:scaleType="centerCrop"
             android:src="@drawable/song_placeholder"/>
 
+        <Button
+            android:id="@+id/btnPlaySong"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="▶ Play" />
+
+        <Button
+            android:id="@+id/btnPauseSong"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏸ Pause" />
+
         <TextView
             android:id="@+id/tvSongTitle"
             android:textSize="22sp"
