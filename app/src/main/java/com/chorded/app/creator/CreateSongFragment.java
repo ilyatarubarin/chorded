@@ -58,6 +58,7 @@ public class CreateSongFragment extends Fragment {
         String artist = etArtist.getText().toString().trim();
         String chordsText = etChords.getText().toString().trim();
         String iconUrl = etIconUrl.getText().toString().trim();
+        String Mp3Url = etMp3Url.getText().toString().trim();
         String lyrics = etLyrics.getText().toString().trim();
 
         // Простая валидация
@@ -79,6 +80,7 @@ public class CreateSongFragment extends Fragment {
         song.put("artist", artist);
         song.put("chords", chords);
         song.put("iconUrl", iconUrl);
+        song.put("mp3Url",Mp3Url);
         song.put("lyricsChordPro", lyrics);
         song.put("difficulty", chords.size()); // простая логика
 
@@ -102,6 +104,7 @@ public class CreateSongFragment extends Fragment {
         etArtist.setText("");
         etChords.setText("");
         etIconUrl.setText("");
+        etMp3Url.setText("");
         etLyrics.setText("");
     }
 }
