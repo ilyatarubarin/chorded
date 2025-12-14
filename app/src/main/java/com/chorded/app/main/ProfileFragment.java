@@ -2,8 +2,12 @@ package com.chorded.app.main;
 
 import android.content.Intent;
 import android.os.Bundle;
-import android.view.*;
-import android.widget.*;
+import android.text.TextUtils;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.Button;
+import android.widget.TextView;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -26,9 +30,15 @@ import java.util.Set;
 
 public class ProfileFragment extends Fragment {
 
-    private TextView tvEmail, tvRole, tvCount;
+    private TextView tvEmail, tvRole;
+
+    private TextView tvLearnedSongsCount;
+    private RecyclerView recyclerLearnedSongs;
+
+    private TextView tvLearnedChordsCount;
+    private TextView tvLearnedChordsList;
+
     private Button btnCreateSong, btnLogout;
-    private RecyclerView recycler;
 
     private final List<Song> learnedSongs = new ArrayList<>();
     private SongAdapter adapter;
@@ -47,23 +57,33 @@ public class ProfileFragment extends Fragment {
 
         tvEmail = v.findViewById(R.id.tvUserEmail);
         tvRole = v.findViewById(R.id.tvUserRole);
-        tvCount = v.findViewById(R.id.tvLearnedSongsCount);
+
+        tvLearnedSongsCount = v.findViewById(R.id.tvLearnedSongsCount);
+
+        // 👇 добавь эти 2 TextView в fragment_profile.xml (см. ниже)
+        tvLearnedChordsCount = v.findViewById(R.id.tvLearnedChordsCount);
+        tvLearnedChordsList = v.findViewById(R.id.tvLearnedChordsList);
+
         btnCreateSong = v.findViewById(R.id.btnCreateSong);
         btnLogout = v.findViewById(R.id.btnLogout);
 
-        recycler = v.findViewById(R.id.recyclerLearnedSongs);
-        recycler.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new SongAdapter(learnedSongs, song -> {});
-        recycler.setAdapter(adapter);
+        recyclerLearnedSongs = v.findViewById(R.id.recyclerLearnedSongs);
+        recyclerLearnedSongs.setLayoutManager(new LinearLayoutManager(getContext()));
+        adapter = new SongAdapter(learnedSongs, song -> {
+            // можно открыть SongFragment при желании
+        });
+        recyclerLearnedSongs.setAdapter(adapter);
 
         db = FirebaseFirestore.getInstance();
         guestStorage = new GuestStorage(requireContext());
 
         if (AppSession.get().isGuest()) {
             setupGuest();
+            loadGuestChords();
             loadGuestSongs();
         } else {
             setupUser();
+            loadUserChords();
             loadUserSongs();
         }
 
@@ -76,7 +96,11 @@ public class ProfileFragment extends Fragment {
         return v;
     }
 
-    // ---------------- USER ----------------
+    private void setupGuest() {
+        tvEmail.setText("Гость");
+        tvRole.setText("Guest");
+        btnCreateSong.setVisibility(View.GONE);
+    }
 
     private void setupUser() {
         String uid = AppSession.get().getUid();
@@ -106,6 +130,42 @@ public class ProfileFragment extends Fragment {
                 });
     }
 
+    // ==========================
+    // CHORDS
+    // ==========================
+
+    private void loadGuestChords() {
+        Set<String> chords = guestStorage.getLearnedChords();
+
+        tvLearnedChordsCount.setText("Выученные аккорды: " + chords.size());
+        tvLearnedChordsList.setText(
+                chords.isEmpty() ? "Нет выученных аккордов" : TextUtils.join(", ", chords)
+        );
+    }
+
+    private void loadUserChords() {
+        String uid = AppSession.get().getUid();
+        if (uid == null) return;
+
+        db.collection("users").document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    List<String> chords = (List<String>) doc.get("learnedChords");
+                    int count = chords == null ? 0 : chords.size();
+
+                    tvLearnedChordsCount.setText("Выученные аккорды: " + count);
+                    tvLearnedChordsList.setText(
+                            (chords == null || chords.isEmpty())
+                                    ? "Нет выученных аккордов"
+                                    : TextUtils.join(", ", chords)
+                    );
+                });
+    }
+
+    // ==========================
+    // SONGS (твоя логика + чуть аккуратнее)
+    // ==========================
+
     private void loadUserSongs() {
         String uid = AppSession.get().getUid();
         if (uid == null) return;
@@ -114,44 +174,45 @@ public class ProfileFragment extends Fragment {
                 .get()
                 .addOnSuccessListener(doc -> {
                     List<String> ids = (List<String>) doc.get("learnedSongs");
-                    if (ids == null) return;
 
                     learnedSongs.clear();
+
+                    int count = ids == null ? 0 : ids.size();
+                    tvLearnedSongsCount.setText("Выученные песни: " + count);
+
+                    if (ids == null) {
+                        adapter.notifyDataSetChanged();
+                        return;
+                    }
 
                     for (String id : ids) {
                         db.collection("songs").document(id)
                                 .get()
                                 .addOnSuccessListener(songDoc -> {
                                     Song s = songDoc.toObject(Song.class);
+                                    if (s == null) return;
                                     s.setId(songDoc.getId());
                                     learnedSongs.add(s);
-                                    tvCount.setText("Изучено песен: " + learnedSongs.size());
                                     adapter.notifyDataSetChanged();
                                 });
                     }
                 });
     }
 
-    // ---------------- GUEST ----------------
-
-    private void setupGuest() {
-        tvEmail.setText("Гость");
-        tvRole.setText("Guest");
-        btnCreateSong.setVisibility(View.GONE);
-    }
-
     private void loadGuestSongs() {
         Set<String> ids = guestStorage.getLearnedSongs();
+
         learnedSongs.clear();
+        tvLearnedSongsCount.setText("Выученные песни: " + ids.size());
 
         for (String id : ids) {
             db.collection("songs").document(id)
                     .get()
-                    .addOnSuccessListener(songDoc -> {
-                        Song s = songDoc.toObject(Song.class);
-                        s.setId(songDoc.getId());
+                    .addOnSuccessListener(doc -> {
+                        Song s = doc.toObject(Song.class);
+                        if (s == null) return;
+                        s.setId(doc.getId());
                         learnedSongs.add(s);
-                        tvCount.setText("Изучено песен: " + learnedSongs.size());
                         adapter.notifyDataSetChanged();
                     });
         }

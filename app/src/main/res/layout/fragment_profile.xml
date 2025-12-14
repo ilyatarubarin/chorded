@@ -30,7 +30,20 @@
             android:layout_height="wrap_content"
             android:text="Добавить песню"
             android:visibility="gone"/>
+        <TextView
+            android:id="@+id/tvLearnedChordsCount"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Выученные аккорды: 0"
+            android:textSize="16sp"/>
 
+        <TextView
+            android:id="@+id/tvLearnedChordsList"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Нет выученных аккордов"
+            android:textSize="14sp"
+            android:layout_marginTop="6dp"/>
         <TextView
             android:id="@+id/tvLearnedSongsCount"
             android:layout_marginTop="8dp"
