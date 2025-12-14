@@ -26,6 +26,7 @@ public class LoginActivity extends AppCompatActivity {
         EditText pass = findViewById(R.id.inputPassword);
         Button btnLogin = findViewById(R.id.btnLogin);
         Button btnGuest = findViewById(R.id.btnGuest);
+        TextView tvRegister = findViewById(R.id.tvRegister);
 
         // ---------- LOGIN ----------
         btnLogin.setOnClickListener(v -> {
@@ -54,6 +55,8 @@ public class LoginActivity extends AppCompatActivity {
                             Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
         });
+        tvRegister.setOnClickListener(v ->
+                startActivity(new Intent(this, RegisterActivity.class)));
 
     }
 }

@@ -16,7 +16,6 @@ import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
 import com.chorded.app.R;
 import com.chorded.app.adapters.SongAdapter;
-import com.chorded.app.models.Chord;
 import com.chorded.app.models.Song;
 import com.chorded.app.session.AppSession;
 import com.chorded.app.session.GuestStorage;
@@ -31,21 +30,25 @@ public class ChordFragment extends Fragment {
 
     private static final String ARG_CHORD_ID = "chord_id";
 
+    private String chordId;
+
+    // UI
     private ImageView chordImage;
     private TextView tvChordTitle;
-
     private Button btnLearnChord;
-
     private RecyclerView recyclerSongs;
-    private SongAdapter adapter;
-    private final List<Song> chordSongs = new ArrayList<>();
 
+    // Data
+    private final List<Song> chordSongs = new ArrayList<>();
+    private SongAdapter adapter;
+
+    // State
+    private boolean isLearned = false;
+
+    // Services
     private FirebaseFirestore db;
     private String uid;
-
     private GuestStorage guestStorage;
-
-    private String chordId;
 
     public static ChordFragment newInstance(String chordId) {
         ChordFragment fragment = new ChordFragment();
@@ -54,6 +57,8 @@ public class ChordFragment extends Fragment {
         fragment.setArguments(args);
         return fragment;
     }
+
+    public ChordFragment() {}
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -79,91 +84,120 @@ public class ChordFragment extends Fragment {
 
         chordImage = view.findViewById(R.id.chordImage);
         tvChordTitle = view.findViewById(R.id.chordTitle);
-
         btnLearnChord = view.findViewById(R.id.btnLearnChord);
 
         recyclerSongs = view.findViewById(R.id.chordSongsRecycler);
         recyclerSongs.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new SongAdapter(chordSongs, song -> {
-            requireActivity().getSupportFragmentManager()
-                    .beginTransaction()
-                    .replace(R.id.fragmentContainer, SongFragment.newInstance(song.getId()))
-                    .addToBackStack(null)
-                    .commit();
-        });
+        adapter = new SongAdapter(chordSongs, song ->
+                requireActivity().getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(R.id.fragmentContainer, SongFragment.newInstance(song.getId()))
+                        .addToBackStack(null)
+                        .commit()
+        );
         recyclerSongs.setAdapter(adapter);
 
         bindChord();
+        loadLearnState();
         setupLearnButton();
         loadSongsWithChord();
 
         return view;
     }
 
+    // -------------------------
+    // CHORD INFO
+    // -------------------------
+
     private void bindChord() {
         if (chordId == null) return;
 
         tvChordTitle.setText(chordId);
 
-        // Если у тебя есть картинка аккорда в модели/хранилище — подставь сюда URL.
-        // Сейчас оставляю дефолтно: если chordId совпадает с именем файла/ресурса — ты можешь заменить.
-        // Пример: Glide.with(this).load(chord.getImageUrl()).into(chordImage);
-
-        // Заглушка (если есть дефолтная картинка):
-        // chordImage.setImageResource(R.drawable.ic_chord_placeholder);
+        // если позже добавишь модель аккорда — просто подставишь URL
+        chordImage.setImageResource(R.drawable.chord_placeholder);
     }
 
-    private void setupLearnButton() {
+    // -------------------------
+    // LEARN / UNLEARN (TOGGLE)
+    // -------------------------
+
+    private void loadLearnState() {
         if (chordId == null) return;
 
         // 👻 GUEST
         if (AppSession.get().isGuest()) {
-            boolean learned = guestStorage.isChordLearned(chordId);
-            toggleLearnButton(learned);
-
-            btnLearnChord.setOnClickListener(v -> {
-                guestStorage.addChord(chordId);
-                toggleLearnButton(true);
-            });
+            isLearned = guestStorage.isChordLearned(chordId);
+            updateLearnButton();
             return;
         }
 
         // 👤 USER
         if (uid == null) {
-            // если вдруг uid нет — просто скрываем кнопку
             btnLearnChord.setVisibility(View.GONE);
             return;
         }
 
-        // Проверяем в Firestore: learnedChords содержит chordId?
         db.collection("users").document(uid)
                 .get()
                 .addOnSuccessListener(doc -> {
                     List<String> learned = (List<String>) doc.get("learnedChords");
-                    boolean isLearned = learned != null && learned.contains(chordId);
-
-                    toggleLearnButton(isLearned);
-
-                    btnLearnChord.setOnClickListener(v -> {
-                        if (isLearned) return;
-
-                        db.collection("users").document(uid)
-                                .update("learnedChords", FieldValue.arrayUnion(chordId))
-                                .addOnSuccessListener(x -> toggleLearnButton(true));
-                    });
+                    isLearned = learned != null && learned.contains(chordId);
+                    updateLearnButton();
                 });
     }
 
-    private void toggleLearnButton(boolean learned) {
-        if (learned) {
-            btnLearnChord.setEnabled(false);
-            btnLearnChord.setText("Аккорд выучен");
+    private void setupLearnButton() {
+        btnLearnChord.setOnClickListener(v -> {
+
+            // 👻 GUEST
+            if (AppSession.get().isGuest()) {
+                if (isLearned) {
+                    guestStorage.removeChord(chordId);
+                } else {
+                    guestStorage.addChord(chordId);
+                }
+                isLearned = !isLearned;
+                updateLearnButton();
+                return;
+            }
+
+            // 👤 USER
+            if (uid == null) return;
+
+            if (isLearned) {
+                db.collection("users").document(uid)
+                        .update("learnedChords",
+                                FieldValue.arrayRemove(chordId))
+                        .addOnSuccessListener(x -> {
+                            isLearned = false;
+                            updateLearnButton();
+                        });
+            } else {
+                db.collection("users").document(uid)
+                        .update("learnedChords",
+                                FieldValue.arrayUnion(chordId))
+                        .addOnSuccessListener(x -> {
+                            isLearned = true;
+                            updateLearnButton();
+                        });
+            }
+        });
+    }
+
+    private void updateLearnButton() {
+        if (isLearned) {
+            btnLearnChord.setText("Удалить из изученных");
         } else {
-            btnLearnChord.setEnabled(true);
             btnLearnChord.setText("Выучить аккорд");
         }
+        btnLearnChord.setEnabled(true);
         btnLearnChord.setVisibility(View.VISIBLE);
     }
+
+    // -------------------------
+    // SONGS WITH CHORD
+    // -------------------------
 
     private void loadSongsWithChord() {
         if (chordId == null) return;
