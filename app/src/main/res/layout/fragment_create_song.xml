@@ -31,7 +31,12 @@
             android:id="@+id/etIconUrl"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:hint="Icon URL (GitHub raw)"/>
+            android:hint="Icon URL (GitHub Pages)"/>
+        <EditText
+            android:id="@+id/etMp3Url"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:hint="Mp3 URL (GitHub Pages)"/>
 
         <EditText
             android:id="@+id/etLyrics"

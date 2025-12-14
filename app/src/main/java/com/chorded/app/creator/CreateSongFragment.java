@@ -22,7 +22,7 @@ import java.util.Map;
 
 public class CreateSongFragment extends Fragment {
 
-    private EditText etTitle, etArtist, etChords, etIconUrl, etLyrics;
+    private EditText etTitle, etArtist, etChords, etIconUrl, etMp3Url, etLyrics;
     private Button btnCreate;
 
     private FirebaseFirestore db;
@@ -41,6 +41,7 @@ public class CreateSongFragment extends Fragment {
         etArtist = v.findViewById(R.id.etArtist);
         etChords = v.findViewById(R.id.etChords);
         etIconUrl = v.findViewById(R.id.etIconUrl);
+        etMp3Url = v.findViewById(R.id.etMp3Url);
         etLyrics = v.findViewById(R.id.etLyrics);
         btnCreate = v.findViewById(R.id.btnCreateSong);
 
