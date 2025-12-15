@@ -1,5 +1,16 @@
 package com.chorded.app.main;
+import com.chorded.app.recommendations.SongCard;
+import com.chorded.app.recommendations.SongCardBuilder;
+import android.util.Log;
+import java.util.Set;
+import com.chorded.app.adapters.SongCardAdapter;
 
+import com.chorded.app.recommendations.SongCard;
+import com.chorded.app.recommendations.SongCardBuilder;
+import com.chorded.app.recommendations.SongStatus;
+
+import java.util.Set;
+import java.util.HashSet;
 
 import com.chorded.app.session.GuestStorage;
 import android.os.Bundle;
@@ -28,10 +39,11 @@ public class RecommendationsFragment extends Fragment {
 
     private EditText input;
     private RecyclerView recycler;
-    private SongAdapter adapter;
+    private SongCardAdapter adapter;
+    private Set<String> learnedChordCache = new HashSet<>();
 
     private final List<Song> allSongs = new ArrayList<>();
-    private final List<Song> filteredSongs = new ArrayList<>();
+    private final List<SongCard> cards = new ArrayList<>();
 
     private FirebaseFirestore db;
 
@@ -50,10 +62,17 @@ public class RecommendationsFragment extends Fragment {
         recycler = v.findViewById(R.id.recyclerRecommendations);
 
         recycler.setLayoutManager(new LinearLayoutManager(requireContext()));
-        adapter = new SongAdapter(filteredSongs, song -> openSong(song.getId()));
+        adapter = new SongCardAdapter(
+                cards,
+                card -> openSong(card.getSong().getId())
+        );
+        recycler.setAdapter(adapter);
+
         recycler.setAdapter(adapter);
 
         db = FirebaseFirestore.getInstance();
+        loadLearnedChords();
+
 
         loadAllSongs();
 
@@ -99,74 +118,52 @@ public class RecommendationsFragment extends Fragment {
     // ----------------------------------
 
     private void filter(String text) {
-        filteredSongs.clear();
+        cards.clear();
 
-// 🟢 НОВОЕ: если ввод пустой — рекомендации по выученным аккордам
+        // ---------- РЕЖИМ РЕКОМЕНДАЦИЙ ----------
         if (text.trim().isEmpty()) {
 
-            List<String> learned = getLearnedChords();
-
-            // если гость ещё ничего не выучил — показываем всё (как раньше)
-            if (learned.isEmpty()) {
-                filteredSongs.addAll(allSongs);
-                adapter.notifyDataSetChanged();
-                return;
-            }
+            Set<String> learned = getLearnedChordSet();
 
             for (Song song : allSongs) {
-                if (song.getChords() == null) continue;
+                SongCard card =
+                        SongCardBuilder.buildForRecommendation(song, learned);
 
-                int matches = 0;
-                for (String chord : song.getChords()) {
-                    if (learned.contains(chord)) {
-                        matches++;
-                    }
-                }
+                if (card == null) continue;
 
-                if (matches > 0) {
-                    song.setMatchScore(matches); // временно
-                    filteredSongs.add(song);
-                }
+                // ❌ изученные песни пока не показываем
+                if (card.getStatus() == SongStatus.LEARNED) continue;
+
+                cards.add(card);
             }
-            filteredSongs.sort((a, b) ->
+
+            cards.sort((a, b) ->
                     Integer.compare(b.getMatchScore(), a.getMatchScore())
             );
-
-
 
             adapter.notifyDataSetChanged();
             return;
         }
 
-
-        String[] entered = text
-                .toUpperCase()
-                .replace(",", " ")
-                .trim()
-                .split("\\s+");
+        // ---------- РЕЖИМ ПОИСКА ----------
+        List<String> queryChords = parseChords(text);
 
         for (Song song : allSongs) {
-            if (song.getChords() == null) continue;
+            SongCard card =
+                    SongCardBuilder.buildForSearch(song, queryChords);
 
-            int score = 0;
-            for (String chord : entered) {
-                if (song.getChords().contains(chord)) {
-                    score++;
-                }
-            }
-
-            if (score > 0) {
-                song.setMatchScore(score);
-                filteredSongs.add(song);
+            if (card != null) {
+                cards.add(card);
             }
         }
 
-        filteredSongs.sort((a, b) ->
+        cards.sort((a, b) ->
                 Integer.compare(b.getMatchScore(), a.getMatchScore())
         );
 
         adapter.notifyDataSetChanged();
     }
+
 
     // ----------------------------------
     // NAVIGATION
@@ -188,6 +185,69 @@ public class RecommendationsFragment extends Fragment {
         }
         return new ArrayList<>();
     }
+
+    private List<String> parseChords(String text) {
+        List<String> result = new ArrayList<>();
+
+        String[] parts = text
+                .replace(",", " ")
+                .trim()
+                .split("\\s+");
+
+        for (String p : parts) {
+            if (!p.isEmpty()) result.add(normalizeChord(p));
+
+        }
+
+        return result;
+    }
+
+
+    private Set<String> getLearnedChordSet() {
+        return new HashSet<>(learnedChordCache);
+    }
+
+    private String normalizeChord(String chord) {
+        if (chord.length() == 0) return chord;
+        return chord.substring(0, 1).toUpperCase() + chord.substring(1);
+    }
+
+    private void loadLearnedChords() {
+
+        // 👻 GUEST
+        if (AppSession.get().isGuest()) {
+            learnedChordCache.clear();
+            learnedChordCache.addAll(
+                    new GuestStorage(requireContext()).getLearnedChords()
+            );
+            return;
+        }
+
+        // 👤 USER
+        String uid = AppSession.get().getUid();
+        if (uid == null) return;
+
+        db.collection("users")
+                .document(uid)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    List<String> chords =
+                            (List<String>) doc.get("learnedChords");
+
+                    learnedChordCache.clear();
+
+                    if (chords != null) {
+                        learnedChordCache.addAll(chords);
+                    }
+
+                    // 🔄 пересчитываем рекомендации
+                    filter(input.getText().toString());
+                });
+    }
+
+
+
+
 
 
 }
