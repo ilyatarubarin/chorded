@@ -1,5 +1,5 @@
 package com.chorded.app.main;
-import java.util.HashSet;
+
 import android.content.Intent;
 import android.os.Bundle;
 import android.text.TextUtils;
@@ -8,9 +8,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
-import com.chorded.app.recommendations.SongStatus;
-import com.chorded.app.recommendations.SongCardBuilder;
-import com.chorded.app.recommendations.SongCard;
+
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -29,24 +27,23 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import com.chorded.app.adapters.SongCardAdapter;
 
 public class ProfileFragment extends Fragment {
 
     private TextView tvEmail, tvRole;
-    private final List<SongCard> inProgressCards = new ArrayList<>();
-    private SongCardAdapter inProgressAdapter;
-
     private TextView tvLearnedSongsCount;
-    private RecyclerView recyclerLearnedSongs;
 
     private TextView tvLearnedChordsCount;
     private TextView tvLearnedChordsList;
 
     private Button btnCreateSong, btnLogout;
 
+    // 🔹 ДВА СПИСКА
     private final List<Song> learnedSongs = new ArrayList<>();
-    private SongAdapter adapter;
+    private final List<Song> inProgressSongs = new ArrayList<>();
+
+    private SongAdapter learnedAdapter;
+    private SongAdapter inProgressAdapter;
 
     private FirebaseFirestore db;
     private GuestStorage guestStorage;
@@ -64,36 +61,33 @@ public class ProfileFragment extends Fragment {
         tvRole = v.findViewById(R.id.tvUserRole);
 
         tvLearnedSongsCount = v.findViewById(R.id.tvLearnedSongsCount);
-
-        // 👇 добавь эти 2 TextView в fragment_profile.xml (см. ниже)
         tvLearnedChordsCount = v.findViewById(R.id.tvLearnedChordsCount);
         tvLearnedChordsList = v.findViewById(R.id.tvLearnedChordsList);
 
         btnCreateSong = v.findViewById(R.id.btnCreateSong);
         btnLogout = v.findViewById(R.id.btnLogout);
 
-
-        recyclerLearnedSongs = v.findViewById(R.id.recyclerLearnedSongs);
-        recyclerLearnedSongs.setLayoutManager(new LinearLayoutManager(getContext()));
-        adapter = new SongAdapter(learnedSongs, song -> {
-            // можно открыть SongFragment при желании
-        });
-        recyclerLearnedSongs.setAdapter(adapter);
+        RecyclerView recyclerLearned =
+                v.findViewById(R.id.recyclerLearnedSongs);
 
         RecyclerView recyclerInProgress =
                 v.findViewById(R.id.recyclerInProgressSongs);
 
-        recyclerInProgress.setLayoutManager(
-                new LinearLayoutManager(getContext())
+        recyclerLearned.setLayoutManager(new LinearLayoutManager(getContext()));
+        recyclerInProgress.setLayoutManager(new LinearLayoutManager(getContext()));
+
+        learnedAdapter = new SongAdapter(
+                learnedSongs,
+                song -> openSong(song.getId())
         );
 
-        inProgressAdapter = new SongCardAdapter(
-                inProgressCards,
-                card -> openSong(card.getSong().getId())
+        inProgressAdapter = new SongAdapter(
+                inProgressSongs,
+                song -> openSong(song.getId())
         );
 
+        recyclerLearned.setAdapter(learnedAdapter);
         recyclerInProgress.setAdapter(inProgressAdapter);
-
 
         db = FirebaseFirestore.getInstance();
         guestStorage = new GuestStorage(requireContext());
@@ -113,15 +107,13 @@ public class ProfileFragment extends Fragment {
             startActivity(new Intent(requireContext(), LoginActivity.class)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK));
         });
-        loadInProgressSongs();
 
         return v;
     }
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadInProgressSongs();
-    }
+
+    // ==========================
+    // USER / GUEST INFO
+    // ==========================
 
     private void setupGuest() {
         tvEmail.setText("Гость");
@@ -166,7 +158,9 @@ public class ProfileFragment extends Fragment {
 
         tvLearnedChordsCount.setText("Выученные аккорды: " + chords.size());
         tvLearnedChordsList.setText(
-                chords.isEmpty() ? "Нет выученных аккордов" : TextUtils.join(", ", chords)
+                chords.isEmpty()
+                        ? "Нет выученных аккордов"
+                        : TextUtils.join(", ", chords)
         );
     }
 
@@ -190,127 +184,92 @@ public class ProfileFragment extends Fragment {
     }
 
     // ==========================
-    // SONGS (твоя логика + чуть аккуратнее)
+    // SONGS — ГОСТЬ
+    // ==========================
+
+    private void loadGuestSongs() {
+        learnedSongs.clear();
+        inProgressSongs.clear();
+
+        Set<String> learnedIds = guestStorage.getLearnedSongs();
+        Set<String> learningIds = guestStorage.getLearningSongs();
+
+        tvLearnedSongsCount.setText(
+                "Выученные песни: " + learnedIds.size()
+        );
+
+        for (String id : learningIds) {
+            loadSong(id, inProgressSongs, inProgressAdapter);
+        }
+
+        for (String id : learnedIds) {
+            loadSong(id, learnedSongs, learnedAdapter);
+        }
+    }
+
+    // ==========================
+    // SONGS — USER
     // ==========================
 
     private void loadUserSongs() {
         String uid = AppSession.get().getUid();
         if (uid == null) return;
 
+        learnedSongs.clear();
+        inProgressSongs.clear();
+
         db.collection("users").document(uid)
                 .get()
                 .addOnSuccessListener(doc -> {
-                    List<String> ids = (List<String>) doc.get("learnedSongs");
 
-                    learnedSongs.clear();
+                    List<String> learnedIds =
+                            (List<String>) doc.get("learnedSongs");
 
-                    int count = ids == null ? 0 : ids.size();
-                    tvLearnedSongsCount.setText("Выученные песни: " + count);
+                    List<String> learningIds =
+                            (List<String>) doc.get("learningSongs");
 
-                    if (ids == null) {
-                        adapter.notifyDataSetChanged();
-                        return;
-                    }
+                    int learnedCount =
+                            learnedIds == null ? 0 : learnedIds.size();
 
-                    for (String id : ids) {
-                        db.collection("songs").document(id)
-                                .get()
-                                .addOnSuccessListener(songDoc -> {
-                                    Song s = songDoc.toObject(Song.class);
-                                    if (s == null) return;
-                                    s.setId(songDoc.getId());
-                                    learnedSongs.add(s);
-                                    adapter.notifyDataSetChanged();
-                                });
-                    }
-                });
-    }
-
-    private void loadGuestSongs() {
-        Set<String> ids = guestStorage.getLearnedSongs();
-
-        learnedSongs.clear();
-        tvLearnedSongsCount.setText("Выученные песни: " + ids.size());
-
-        for (String id : ids) {
-            db.collection("songs").document(id)
-                    .get()
-                    .addOnSuccessListener(doc -> {
-                        Song s = doc.toObject(Song.class);
-                        if (s == null) return;
-                        s.setId(doc.getId());
-                        learnedSongs.add(s);
-                        adapter.notifyDataSetChanged();
-                    });
-        }
-    }
-    private void loadInProgressSongs() {
-
-        Set<String> learnedChords;
-
-        // 👻 GUEST
-        if (AppSession.get().isGuest()) {
-            learnedChords = guestStorage.getLearnedChords();
-        }
-        // 👤 USER
-        else {
-            String uid = AppSession.get().getUid();
-            if (uid == null) return;
-
-            // ⚠️ мы уже один раз грузим пользователя,
-            // но для простоты пока делаем отдельно
-            learnedChords = new HashSet<>();
-
-            db.collection("users").document(uid)
-                    .get()
-                    .addOnSuccessListener(doc -> {
-                        List<String> chords =
-                                (List<String>) doc.get("learnedChords");
-
-                        if (chords != null) {
-                            learnedChords.addAll(chords);
-                        }
-
-                        buildInProgressCards(learnedChords);
-                    });
-
-            return;
-        }
-
-        // guest сразу
-        buildInProgressCards(learnedChords);
-    }
-    private void buildInProgressCards(Set<String> learnedChords) {
-
-        inProgressCards.clear();
-
-        db.collection("songs")
-                .get()
-                .addOnSuccessListener(query -> {
-
-                    for (var doc : query) {
-                        Song song = doc.toObject(Song.class);
-                        if (song == null) continue;
-
-                        song.setId(doc.getId());
-
-                        SongCard card =
-                                SongCardBuilder.buildForRecommendation(song, learnedChords);
-
-                        if (card == null) continue;
-
-                        if (card.getStatus() == SongStatus.IN_PROGRESS) {
-                            inProgressCards.add(card);
-                        }
-                    }
-
-                    inProgressCards.sort((a, b) ->
-                            Integer.compare(b.getMatchScore(), a.getMatchScore())
+                    tvLearnedSongsCount.setText(
+                            "Выученные песни: " + learnedCount
                     );
 
-                    inProgressAdapter.notifyDataSetChanged();
+                    if (learningIds != null) {
+                        for (String id : learningIds) {
+                            loadSong(id, inProgressSongs, inProgressAdapter);
+                        }
+                    }
+
+                    if (learnedIds != null) {
+                        for (String id : learnedIds) {
+                            loadSong(id, learnedSongs, learnedAdapter);
+                        }
+                    }
                 });
     }
+
+    // ==========================
+    // COMMON
+    // ==========================
+
+    private void loadSong(
+            String songId,
+            List<Song> target,
+            SongAdapter adapter
+    ) {
+        db.collection("songs").document(songId)
+                .get()
+                .addOnSuccessListener(doc -> {
+                    Song s = doc.toObject(Song.class);
+                    if (s == null) return;
+
+                    s.setId(doc.getId());
+                    target.add(s);
+                    adapter.notifyDataSetChanged();
+                });
+    }
+
     private void openSong(String songId) {
         requireActivity()
                 .getSupportFragmentManager()
@@ -319,7 +278,4 @@ public class ProfileFragment extends Fragment {
                 .addToBackStack(null)
                 .commit();
     }
-
-
-
 }

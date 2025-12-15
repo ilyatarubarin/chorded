@@ -11,6 +11,8 @@ public class GuestStorage {
     private static final String PREFS = "guest_storage";
 
     private static final String KEY_LEARNED_SONGS = "learned_songs";
+    private static final String KEY_LEARNING_SONGS = "learning_songs";
+
     private static final String KEY_LEARNED_CHORDS = "learned_chords";
 
     private final SharedPreferences prefs;
@@ -51,6 +53,30 @@ public class GuestStorage {
     public Set<String> getLearnedChords() {
         Set<String> set = prefs.getStringSet(KEY_LEARNED_CHORDS, null);
         return set == null ? new HashSet<>() : new HashSet<>(set);
+    }
+// ==========================
+// LEARNING SONGS
+// ==========================
+
+    public Set<String> getLearningSongs() {
+        Set<String> set = prefs.getStringSet(KEY_LEARNING_SONGS, null);
+        return set == null ? new HashSet<>() : new HashSet<>(set);
+    }
+
+    public void addLearningSong(String songId) {
+        Set<String> songs = getLearningSongs();
+        songs.add(songId);
+        prefs.edit().putStringSet(KEY_LEARNING_SONGS, songs).apply();
+    }
+
+    public void removeLearningSong(String songId) {
+        Set<String> songs = getLearningSongs();
+        songs.remove(songId);
+        prefs.edit().putStringSet(KEY_LEARNING_SONGS, songs).apply();
+    }
+
+    public boolean isLearningSong(String songId) {
+        return getLearningSongs().contains(songId);
     }
 
     public void addChord(String chordId) {

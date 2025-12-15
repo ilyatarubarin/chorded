@@ -128,58 +128,84 @@ public class SongFragment extends Fragment {
     // ----------------------------
     // LEARNED SONGS (USER + GUEST)
     // ----------------------------
+    private void toggleState(boolean learned, boolean learning) {
+        if (learned) {
+            btnLearn.setVisibility(View.GONE);
+            btnUnlearn.setVisibility(View.GONE);
+        } else if (learning) {
+            btnLearn.setVisibility(View.GONE);
+            btnUnlearn.setVisibility(View.VISIBLE);
+            btnUnlearn.setText("Подтвердить выучена");
+        } else {
+            btnLearn.setVisibility(View.VISIBLE);
+            btnUnlearn.setVisibility(View.GONE);
+        }
+    }
 
     private void checkLearned() {
-        // 👻 GUEST
         if (AppSession.get().isGuest()) {
-            toggle(guestStorage.isLearned(songId));
+            boolean learned = guestStorage.isLearned(songId);
+            boolean learning = guestStorage.isLearningSong(songId);
+            toggleState(learned, learning);
             return;
         }
 
-        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
                 .get()
                 .addOnSuccessListener(doc -> {
                     List<String> learned = (List<String>) doc.get("learnedSongs");
-                    toggle(learned != null && learned.contains(songId));
+                    List<String> learning = (List<String>) doc.get("learningSongs");
+
+                    toggleState(
+                            learned != null && learned.contains(songId),
+                            learning != null && learning.contains(songId)
+                    );
                 });
     }
 
+
     private void addToLearned() {
-        // 👻 GUEST
         if (AppSession.get().isGuest()) {
-            guestStorage.addSong(songId);
-            toggle(true);
+            guestStorage.addLearningSong(songId);
+            toggleState(false, true);
             return;
         }
 
-        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
-                .update("learnedSongs",
+                .update("learningSongs",
                         com.google.firebase.firestore.FieldValue.arrayUnion(songId))
-                .addOnSuccessListener(v -> toggle(true));
+                .addOnSuccessListener(v -> toggleState(false, true));
     }
+
 
     private void removeFromLearned() {
-        // 👻 GUEST
         if (AppSession.get().isGuest()) {
-            guestStorage.removeSong(songId);
-            toggle(false);
+            guestStorage.removeLearningSong(songId);
+            guestStorage.addSong(songId);
+            toggleState(true, false);
             return;
         }
 
-        // 👤 USER
         if (uid == null) return;
 
         db.collection("users").document(uid)
-                .update("learnedSongs",
-                        com.google.firebase.firestore.FieldValue.arrayRemove(songId))
-                .addOnSuccessListener(v -> toggle(false));
+                .update(
+                        "learningSongs",
+                        com.google.firebase.firestore.FieldValue.arrayRemove(songId)
+                );
+
+        db.collection("users").document(uid)
+                .update(
+                        "learnedSongs",
+                        com.google.firebase.firestore.FieldValue.arrayUnion(songId)
+                )
+                .addOnSuccessListener(v -> toggleState(true, false));
     }
+
 
     private void toggle(boolean learned) {
         btnLearn.setVisibility(learned ? View.GONE : View.VISIBLE);
