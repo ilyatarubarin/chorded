@@ -1,5 +1,7 @@
 package com.chorded.app.main;
 
+
+import com.chorded.app.session.GuestStorage;
 import android.os.Bundle;
 import android.text.Editable;
 import android.view.LayoutInflater;
@@ -99,11 +101,33 @@ public class RecommendationsFragment extends Fragment {
     private void filter(String text) {
         filteredSongs.clear();
 
+// 🟢 НОВОЕ: если ввод пустой — рекомендации по выученным аккордам
         if (text.trim().isEmpty()) {
-            filteredSongs.addAll(allSongs);
+
+            List<String> learned = getLearnedChords();
+
+            // если гость ещё ничего не выучил — показываем всё (как раньше)
+            if (learned.isEmpty()) {
+                filteredSongs.addAll(allSongs);
+                adapter.notifyDataSetChanged();
+                return;
+            }
+
+            for (Song song : allSongs) {
+                if (song.getChords() == null) continue;
+
+                for (String chord : song.getChords()) {
+                    if (learned.contains(chord)) {
+                        filteredSongs.add(song);
+                        break;
+                    }
+                }
+            }
+
             adapter.notifyDataSetChanged();
             return;
         }
+
 
         String[] entered = text
                 .toUpperCase()
@@ -146,4 +170,14 @@ public class RecommendationsFragment extends Fragment {
                 .addToBackStack(null)
                 .commit();
     }
+    private List<String> getLearnedChords() {
+        if (AppSession.get().isGuest()) {
+            return new ArrayList<>(
+                    new GuestStorage(requireContext()).getLearnedChords()
+            );
+        }
+        return new ArrayList<>();
+    }
+
+
 }
