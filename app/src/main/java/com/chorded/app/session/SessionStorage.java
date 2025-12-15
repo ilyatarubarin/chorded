@@ -15,12 +15,13 @@ public class SessionStorage {
         prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
     }
 
-    public void saveGuest() {
+    public void saveGuest(String uid) {
         prefs.edit()
                 .putString(KEY_TYPE, SessionType.GUEST.name())
-                .remove(KEY_UID)
+                .putString(KEY_UID, uid)
                 .apply();
     }
+
 
     public void saveAuth(String uid) {
         prefs.edit()

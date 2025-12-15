@@ -47,7 +47,10 @@ public class LoginActivity extends AppCompatActivity {
             FirebaseAuth.getInstance()
                     .signInAnonymously()
                     .addOnSuccessListener(result -> {
-                        AppSession.get().startGuest(this);
+                        AppSession.get().startGuest(
+                                this,
+                                result.getUser().getUid()
+                        );
                         startActivity(new Intent(this, MainActivity.class));
                         finish();
                     })
@@ -55,6 +58,7 @@ public class LoginActivity extends AppCompatActivity {
                             Toast.makeText(this, e.getMessage(), Toast.LENGTH_SHORT).show()
                     );
         });
+
         tvRegister.setOnClickListener(v ->
                 startActivity(new Intent(this, RegisterActivity.class)));
 

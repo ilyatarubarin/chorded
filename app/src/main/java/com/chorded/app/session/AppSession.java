@@ -39,15 +39,12 @@ public class AppSession {
     // ===============================
     // START MODES
     // ===============================
-    public void startGuest(Context context) {
-        FirebaseAuth.getInstance()
-                .signInAnonymously()
-                .addOnSuccessListener(result -> {
-                    type = SessionType.GUEST;
-                    uid = result.getUser().getUid(); // ← ВАЖНО
-                    new SessionStorage(context).saveGuest();
-                });
+    public void startGuest(Context context, String uid) {
+        type = SessionType.GUEST;
+        this.uid = uid;
+        new SessionStorage(context).saveGuest(uid);
     }
+
 
 
     public void startAuth(Context context, String uid) {
