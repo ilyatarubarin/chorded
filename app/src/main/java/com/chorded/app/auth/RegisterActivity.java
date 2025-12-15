@@ -11,6 +11,9 @@ import androidx.appcompat.app.AppCompatActivity;
 import com.chorded.app.R;
 import com.chorded.app.main.MainActivity;
 import com.chorded.app.models.User;
+import com.chorded.app.session.AppSession;
+import com.chorded.app.session.SessionStorage;
+import com.chorded.app.session.SessionType;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -35,6 +38,7 @@ public class RegisterActivity extends AppCompatActivity {
         Button btnRegister = findViewById(R.id.btnRegister);
 
         btnRegister.setOnClickListener(v -> {
+
             String name = inputName.getText().toString().trim();
             String email = inputEmail.getText().toString().trim();
             String pass = inputPassword.getText().toString().trim();
@@ -46,17 +50,37 @@ public class RegisterActivity extends AppCompatActivity {
 
             auth.createUserWithEmailAndPassword(email, pass)
                     .addOnSuccessListener(result -> {
-                        String uid = auth.getCurrentUser().getUid();
 
+                        String uid = result.getUser().getUid();
+
+                        // ---------- CREATE USER IN FIRESTORE ----------
                         User user = new User(uid, name, email, new ArrayList<>());
                         user.setRole("user");
-                        db.collection("users").document(uid).set(user);
 
-                        startActivity(new Intent(this, MainActivity.class));
-                        finish();
+                        db.collection("users")
+                                .document(uid)
+                                .set(user)
+                                .addOnSuccessListener(v2 -> {
+
+                                    // ---------- 🔑 INIT APP SESSION ----------
+                                    AppSession.get().startAuth(this, uid);
+                                    new SessionStorage(this).saveAuth(uid);
+
+                                    // ---------- GO TO MAIN ----------
+                                    startActivity(
+                                            new Intent(this, MainActivity.class)
+                                                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TASK)
+                                    );
+                                    finish();
+                                });
                     })
                     .addOnFailureListener(e ->
-                            Toast.makeText(this, "Ошибка регистрации: " + e.getMessage(), Toast.LENGTH_SHORT).show());
+                            Toast.makeText(
+                                    this,
+                                    "Ошибка регистрации: " + e.getMessage(),
+                                    Toast.LENGTH_SHORT
+                            ).show()
+                    );
         });
     }
 }
