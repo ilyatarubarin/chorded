@@ -116,13 +116,23 @@ public class RecommendationsFragment extends Fragment {
             for (Song song : allSongs) {
                 if (song.getChords() == null) continue;
 
+                int matches = 0;
                 for (String chord : song.getChords()) {
                     if (learned.contains(chord)) {
-                        filteredSongs.add(song);
-                        break;
+                        matches++;
                     }
                 }
+
+                if (matches > 0) {
+                    song.setMatchScore(matches); // временно
+                    filteredSongs.add(song);
+                }
             }
+            filteredSongs.sort((a, b) ->
+                    Integer.compare(b.getMatchScore(), a.getMatchScore())
+            );
+
+
 
             adapter.notifyDataSetChanged();
             return;
