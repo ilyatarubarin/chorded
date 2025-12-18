@@ -1,0 +1,9 @@
+# Folders to ignore at the root of your project
+/build
+/.idea
+/.gradle
+/app/build
+
+# Files to ignore at the root of your project
+*.iml
+local.properties
