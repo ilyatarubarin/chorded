@@ -1,5 +1,6 @@
 package com.chorded.app.adapters;
 
+import android.content.Context;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -9,17 +10,12 @@ import android.widget.TextView;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
 import com.chorded.app.R;
 import com.chorded.app.models.Chord;
 
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Сеточный адаптер для отображения аккордов (image + name).
- * Ожидает, что Chord.imageUrl содержит ссылку (Storage) или null.
- */
 public class ChordGridAdapter extends RecyclerView.Adapter<ChordGridAdapter.Holder> {
 
     public interface OnChordClick {
@@ -50,16 +46,30 @@ public class ChordGridAdapter extends RecyclerView.Adapter<ChordGridAdapter.Hold
     @Override
     public void onBindViewHolder(@NonNull Holder holder, int position) {
         Chord c = items.get(position);
+        Context context = holder.itemView.getContext();
 
-        holder.name.setText(c.getName() != null ? c.getName() : c.getId());
+        // Текст скрыт в XML (visibility=gone), можно не устанавливать,
+        // но оставим на всякий случай, если решишь вернуть.
+        // holder.name.setText(c.getName() != null ? c.getName() : c.getId());
 
-        // Загружаем картинку аккорда: если imageUrl есть — Glide, иначе placeholder
-        if (c.getImageUrl() != null && !c.getImageUrl().isEmpty()) {
-            Glide.with(holder.image.getContext())
-                    .load(c.getImageUrl())
-                    .placeholder(R.drawable.chord_placeholder)
-                    .error(R.drawable.chord_placeholder)
-                    .into(holder.image);
+        // ЛОГИКА ДЛЯ СПИСКА (пункт 2): берем img_src_with_name
+        String rawPath = c.getImg_src_with_name();
+
+        if (rawPath != null && !rawPath.isEmpty()) {
+            // Отрезаем папку "chords/", если она есть в пути
+            // Пример: "chords/Am_chord_with_name" -> "Am_chord_with_name"
+            String resName = rawPath.contains("/")
+                    ? rawPath.substring(rawPath.lastIndexOf("/") + 1)
+                    : rawPath;
+
+            // Ищем ресурс по имени
+            int resId = context.getResources().getIdentifier(resName, "drawable", context.getPackageName());
+
+            if (resId != 0) {
+                holder.image.setImageResource(resId);
+            } else {
+                holder.image.setImageResource(R.drawable.chord_placeholder);
+            }
         } else {
             holder.image.setImageResource(R.drawable.chord_placeholder);
         }

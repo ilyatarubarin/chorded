@@ -13,9 +13,9 @@ import androidx.fragment.app.Fragment;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
-import com.bumptech.glide.Glide;
 import com.chorded.app.R;
 import com.chorded.app.adapters.SongAdapter;
+import com.chorded.app.models.Chord; // Импортируем обновленную модель
 import com.chorded.app.models.Song;
 import com.chorded.app.session.AppSession;
 import com.chorded.app.session.GuestStorage;
@@ -97,7 +97,8 @@ public class ChordFragment extends Fragment {
         );
         recyclerSongs.setAdapter(adapter);
 
-        bindChord();
+        bindChord();      // Здесь мы только ставим заголовок
+        loadChordInfo();  // <--- ДОБАВИЛИ: Загружаем картинку аккорда
         loadLearnState();
         setupLearnButton();
         loadSongsWithChord();
@@ -111,16 +112,48 @@ public class ChordFragment extends Fragment {
 
     private void bindChord() {
         if (chordId == null) return;
-
         tvChordTitle.setText(chordId);
-
-        // если позже добавишь модель аккорда — просто подставишь URL
+        // Сразу ставим заглушку, пока грузится реальная картинка
         chordImage.setImageResource(R.drawable.chord_placeholder);
+    }
+
+    /**
+     * Загружаем данные самого аккорда (чтобы получить img_src)
+     */
+    private void loadChordInfo() {
+        if (chordId == null) return;
+
+        db.collection("chords").document(chordId)
+                .get()
+                .addOnSuccessListener(documentSnapshot -> {
+                    Chord chord = documentSnapshot.toObject(Chord.class);
+                    if (chord != null) {
+                        // ЛОГИКА ДЛЯ ЭКРАНА АККОРДА (пункт 3): берем img_src
+                        String rawPath = chord.getImg_src();
+
+                        if (rawPath != null && !rawPath.isEmpty()) {
+                            // Отрезаем папку "chords/", если она есть
+                            String resName = rawPath.contains("/")
+                                    ? rawPath.substring(rawPath.lastIndexOf("/") + 1)
+                                    : rawPath;
+
+                            // Получаем идентификатор ресурса
+                            if (getContext() != null) {
+                                int resId = getResources().getIdentifier(resName, "drawable", requireContext().getPackageName());
+                                if (resId != 0) {
+                                    chordImage.setImageResource(resId);
+                                }
+                            }
+                        }
+                    }
+                });
     }
 
     // -------------------------
     // LEARN / UNLEARN (TOGGLE)
     // -------------------------
+
+    // ... (остальной код без изменений: loadLearnState, setupLearnButton, updateLearnButton, loadSongsWithChord) ...
 
     private void loadLearnState() {
         if (chordId == null) return;
@@ -212,7 +245,7 @@ public class ChordFragment extends Fragment {
                         s.setId(doc.getId());
                         chordSongs.add(s);
                     }
-                    adapter.notifyDataSetChanged();
+                    if (adapter != null) adapter.notifyDataSetChanged();
                 });
     }
 }
