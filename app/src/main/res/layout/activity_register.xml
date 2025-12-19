@@ -35,9 +35,10 @@
         android:layout_height="wrap_content"
         android:layout_marginTop="8dp"/>
 
-    <Button
+    <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnRegister"
         android:text="Зарегистрироваться"
+        android:background="@drawable/cr25b9e9e9e"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"/>

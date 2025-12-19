@@ -29,6 +29,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:text="Добавить песню"
+            android:background="@drawable/cr25b9e9e9e"
             android:visibility="gone"/>
         <TextView
             android:id="@+id/tvLearnedChordsCount"

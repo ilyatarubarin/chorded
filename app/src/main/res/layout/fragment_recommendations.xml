@@ -7,11 +7,14 @@
 
     <EditText
         android:id="@+id/inputChords"
-        android:hint="Введите аккорды (например: C Am G)"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:layout_marginTop="55dp"
+        android:background="@drawable/search_icon"
+        android:hint="Введите аккорды (например: C Am G)"
+        android:imeOptions="actionDone"
         android:inputType="text"
-        android:imeOptions="actionDone"/>
+        android:paddingLeft="20dp" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerRecommendations"
