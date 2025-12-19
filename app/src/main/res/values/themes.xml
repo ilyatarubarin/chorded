@@ -5,6 +5,6 @@
         <item name="colorPrimaryVariant">@color/purple_700</item>
         <item name="colorOnPrimary">@color/white</item>
 
-        <item name="android:colorBackground">@color/white</item>
-    </style>
+        <item name="android:colorBackground">@color/custom_background_light</item>
+        <item name="android:windowBackground">@color/custom_background_light</item>    </style>
 </resources>

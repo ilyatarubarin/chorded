@@ -14,7 +14,10 @@
         android:hint="Введите аккорды (например: C Am G)"
         android:imeOptions="actionDone"
         android:inputType="text"
-        android:paddingLeft="20dp" />
+        android:paddingLeft="20dp"
+        android:paddingBottom="10dp"
+        android:textColor="@color/black"
+        android:textColorHint="@color/black" />
 
     <androidx.recyclerview.widget.RecyclerView
         android:id="@+id/recyclerRecommendations"

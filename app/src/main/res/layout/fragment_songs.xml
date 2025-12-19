@@ -12,11 +12,14 @@
             android:id="@+id/inputSearch"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_marginTop="55dp"
             android:background="@drawable/search_icon"
             android:hint="Поиск по названию, исполнителю, жанру"
             android:inputType="text"
-            android:padding="12dp"
-            android:layout_marginTop="55dp"/>
+            android:paddingStart="20dp"
+            android:paddingBottom="10dp"
+            android:textColor="@color/black"
+            android:textColorHint="@color/black" />
 
         <androidx.recyclerview.widget.RecyclerView
             android:id="@+id/recyclerSongs"
