@@ -7,15 +7,21 @@ import android.widget.*;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.chorded.app.R;
+import com.chorded.app.adapters.ChordGridAdapter;
+import com.chorded.app.models.Chord;
 import com.chorded.app.models.Song;
 import com.chorded.app.session.AppSession;
 import com.chorded.app.session.GuestStorage;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.firestore.FieldPath;
 import com.google.firebase.firestore.FirebaseFirestore;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SongFragment extends Fragment {
@@ -26,8 +32,9 @@ public class SongFragment extends Fragment {
 
     // UI
     private ImageView songIcon;
-    private TextView tvTitle, tvArtist, tvChords, tvLyrics;
+    private TextView tvTitle, tvArtist, tvLyrics;
     private Button btnLearn, btnUnlearn, btnPlay, btnPause;
+    private RecyclerView rvSongChords;
 
     // Firebase
     private FirebaseFirestore db;
@@ -38,6 +45,8 @@ public class SongFragment extends Fragment {
 
     // Data
     private Song currentSong;
+    private final List<Chord> songChords = new ArrayList<>();
+    private ChordGridAdapter chordAdapter;
 
     // Audio
     private MediaPlayer mediaPlayer;
@@ -75,14 +84,15 @@ public class SongFragment extends Fragment {
         songIcon = view.findViewById(R.id.songIcon);
         tvTitle = view.findViewById(R.id.tvSongTitle);
         tvArtist = view.findViewById(R.id.tvSongArtist);
-        tvChords = view.findViewById(R.id.tvSongChords);
         tvLyrics = view.findViewById(R.id.tvSongLyrics);
+        rvSongChords = view.findViewById(R.id.rvSongChords);
 
         btnLearn = view.findViewById(R.id.btnLearnSong);
         btnUnlearn = view.findViewById(R.id.btnUnlearnSong);
         btnPlay = view.findViewById(R.id.btnPlaySong);
         btnPause = view.findViewById(R.id.btnPauseSong);
 
+        setupChordsRecycler();
         loadSong();
         checkLearned();
 
@@ -101,6 +111,49 @@ public class SongFragment extends Fragment {
     }
 
     // ----------------------------
+    // CHORDS
+    // ----------------------------
+
+    private void setupChordsRecycler() {
+        rvSongChords.setLayoutManager(new GridLayoutManager(getContext(), 2));
+
+        chordAdapter = new ChordGridAdapter(
+                songChords,
+                chord -> requireActivity()
+                        .getSupportFragmentManager()
+                        .beginTransaction()
+                        .replace(
+                                R.id.fragmentContainer,
+                                ChordFragment.newInstance(chord.getId())
+                        )
+                        .addToBackStack(null)
+                        .commit()
+        );
+
+        rvSongChords.setAdapter(chordAdapter);
+    }
+
+    private void loadSongChords(Song song) {
+        List<String> chordIds = song.getChords();
+        if (chordIds == null || chordIds.isEmpty()) return;
+
+        db.collection("chords")
+                .whereIn(FieldPath.documentId(), chordIds)
+                .get()
+                .addOnSuccessListener(query -> {
+                    songChords.clear();
+                    for (var doc : query) {
+                        Chord chord = doc.toObject(Chord.class);
+                        if (chord != null) {
+                            chord.setId(doc.getId());
+                            songChords.add(chord);
+                        }
+                    }
+                    chordAdapter.notifyDataSetChanged();
+                });
+    }
+
+    // ----------------------------
     // LOAD SONG
     // ----------------------------
 
@@ -115,19 +168,21 @@ public class SongFragment extends Fragment {
 
                     tvTitle.setText(currentSong.getTitle());
                     tvArtist.setText(currentSong.getArtist());
-                    tvChords.setText("Аккорды: " + String.join(", ", currentSong.getChords()));
                     tvLyrics.setText(currentSong.getLyricsChordPro());
 
                     Glide.with(this)
                             .load(currentSong.getIconUrl())
                             .placeholder(R.drawable.song_placeholder)
                             .into(songIcon);
+
+                    loadSongChords(currentSong);
                 });
     }
 
     // ----------------------------
-    // LEARNED SONGS (USER + GUEST)
+    // LEARNED SONGS
     // ----------------------------
+
     private void toggleState(boolean learned, boolean learning) {
         if (learned) {
             btnLearn.setVisibility(View.GONE);
@@ -144,9 +199,10 @@ public class SongFragment extends Fragment {
 
     private void checkLearned() {
         if (AppSession.get().isGuest()) {
-            boolean learned = guestStorage.isLearned(songId);
-            boolean learning = guestStorage.isLearningSong(songId);
-            toggleState(learned, learning);
+            toggleState(
+                    guestStorage.isLearned(songId),
+                    guestStorage.isLearningSong(songId)
+            );
             return;
         }
 
@@ -165,7 +221,6 @@ public class SongFragment extends Fragment {
                 });
     }
 
-
     private void addToLearned() {
         if (AppSession.get().isGuest()) {
             guestStorage.addLearningSong(songId);
@@ -180,7 +235,6 @@ public class SongFragment extends Fragment {
                         com.google.firebase.firestore.FieldValue.arrayUnion(songId))
                 .addOnSuccessListener(v -> toggleState(false, true));
     }
-
 
     private void removeFromLearned() {
         if (AppSession.get().isGuest()) {
@@ -204,12 +258,6 @@ public class SongFragment extends Fragment {
                         com.google.firebase.firestore.FieldValue.arrayUnion(songId)
                 )
                 .addOnSuccessListener(v -> toggleState(true, false));
-    }
-
-
-    private void toggle(boolean learned) {
-        btnLearn.setVisibility(learned ? View.GONE : View.VISIBLE);
-        btnUnlearn.setVisibility(learned ? View.VISIBLE : View.GONE);
     }
 
     // ----------------------------
