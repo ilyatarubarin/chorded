@@ -3,7 +3,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#2C2C2C"
+    android:background="?android:attr/colorBackground"
     android:orientation="vertical"
     android:paddingTop="200dp">
 
@@ -62,7 +62,7 @@
         android:layout_marginTop="150dp"
         android:gravity="center"
         android:text="Нет аккаунта?\nЗарегистрироваться"
-        android:textColor="#FFFFFF"
+        android:textColor="?android:attr/textColorPrimary"
         android:textSize="16sp" />
 
 

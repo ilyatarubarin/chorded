@@ -6,4 +6,6 @@
     <color name="purple_700">#3700B3</color>
     <color name="teal_200">#03DAC5</color>
     <color name="gray_200">#EEEEEE</color>
+
+    <color name="app_background_dark">#2C2C2C</color>
 </resources>
