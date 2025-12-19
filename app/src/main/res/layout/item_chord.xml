@@ -8,8 +8,8 @@
 
     <ImageView
         android:id="@+id/chordImage"
-        android:layout_width="80dp"
-        android:layout_height="80dp"
+        android:layout_width="160dp"
+        android:layout_height="160dp"
         android:scaleType="fitCenter"
         android:src="@drawable/chord_placeholder"/>
 

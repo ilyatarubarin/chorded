@@ -3,7 +3,9 @@
     android:padding="24dp"
     android:gravity="center_horizontal"
     android:layout_width="match_parent"
-    android:layout_height="match_parent">
+    android:layout_height="match_parent"
+
+    >
 
     <EditText
         android:id="@+id/inputName"
@@ -11,8 +13,12 @@
         android:textColor="#000000"
         android:textColorHint="#757575"
         android:hint="Имя"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"/>
+        android:layout_width="244dp"
+        android:layout_height="wrap_content"
+        android:paddingHorizontal="21dp"
+        android:paddingVertical="23dp"
+        android:layout_marginBottom="27dp"
+        android:layout_marginTop="200dp"/>
 
     <EditText
         android:id="@+id/inputEmail"
@@ -20,9 +26,12 @@
         android:textColor="#000000"
         android:textColorHint="#757575"
         android:hint="Email"
-        android:layout_width="match_parent"
+        android:layout_width="244dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"/>
+        android:paddingHorizontal="21dp"
+        android:paddingVertical="23dp"
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="27dp"/>
 
     <EditText
         android:id="@+id/inputPassword"
@@ -31,15 +40,20 @@
         android:textColorHint="#757575"
         android:hint="Пароль"
         android:inputType="textPassword"
-        android:layout_width="match_parent"
+        android:layout_width="244dp"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"/>
+        android:layout_marginTop="8dp"
+        android:layout_marginBottom="27dp"
+        android:paddingHorizontal="21dp"
+        android:paddingVertical="23dp"/>
 
     <androidx.appcompat.widget.AppCompatButton
         android:id="@+id/btnRegister"
+        android:padding="10dp"
         android:text="Зарегистрироваться"
         android:background="@drawable/cr25b9e9e9e"
-        android:layout_width="match_parent"
+        android:textColor="#FFFFFF"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginTop="16dp"/>
 </LinearLayout>

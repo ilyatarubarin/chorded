@@ -38,7 +38,7 @@ public class ChordsFragment extends Fragment {
         db = FirebaseFirestore.getInstance();
 
         recycler = view.findViewById(R.id.recyclerChords);
-        recycler.setLayoutManager(new GridLayoutManager(getContext(), 3));
+        recycler.setLayoutManager(new GridLayoutManager(getContext(), 2));
 
         adapter = new ChordGridAdapter(chordList, chord -> openChord(chord.getId()));
         recycler.setAdapter(adapter);

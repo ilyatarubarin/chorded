@@ -46,10 +46,11 @@
             android:minLines="6"
             android:gravity="top"/>
 
-        <Button
+        <androidx.appcompat.widget.AppCompatButton
             android:id="@+id/btnCreateSong"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:background="@drawable/cr25b9e9e9e"
             android:text="Добавить песню"
             android:layout_marginTop="16dp"/>
 

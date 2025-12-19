@@ -32,7 +32,7 @@
             android:layout_marginBottom="10dp"
             android:textColor="#FFFFFF"
             android:textSize="20sp"
-            android:textStyle="bold"
+            android:textStyle="bold|italic"
 
             />
 
@@ -45,7 +45,7 @@
             android:textColor="#FFFFFF"
             android:textSize="15sp"
 
-            />
+            android:textStyle="italic" />
 
         <TextView
             android:id="@+id/tvSongSummary"
